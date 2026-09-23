@@ -28,6 +28,7 @@ func _init(title: String, tall := false, accent := Balance.C_PLAYER) -> void:
 		m.add_theme_constant_override("margin_" + side, 28)
 	m.add_theme_constant_override("margin_top", 70 if tall else 40)
 	m.add_theme_constant_override("margin_bottom", 70 if tall else 40)
+	UI.fit_safe_area(m)
 	add_child(m)
 	var center := VBoxContainer.new()
 	center.alignment = BoxContainer.ALIGNMENT_CENTER

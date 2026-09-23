@@ -24,13 +24,15 @@ func setup(g: Game) -> void:
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.theme = UI.theme()
-	add_child(root)
 
+	# the damage flash covers the whole screen; everything else stays inside the safe area
 	hurt_rect = ColorRect.new()
 	hurt_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hurt_rect.color = Color(1, 0.1, 0.15, 0.0)
 	hurt_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(hurt_rect)
+	add_child(hurt_rect)
+	UI.fit_safe_area(root)
+	add_child(root)
 
 	bars = Control.new()
 	bars.set_anchors_preset(Control.PRESET_FULL_RECT)

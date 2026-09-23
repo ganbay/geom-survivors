@@ -10,6 +10,8 @@ const PRIMARY := "PrimaryButton"
 
 static var _theme: Theme
 static var _wide: FontVariation
+## Test hook: when non-zero, used instead of the device safe area (see tests/shot_ui.gd).
+static var force_insets := Vector4.ZERO
 
 
 static func theme() -> Theme:
@@ -245,6 +247,38 @@ static func fmt_num(v: float) -> String:
 	return "%d" % int(v)
 
 
+## Screen insets (left, top, right, bottom) in canvas units that keep content clear of
+## notches, camera holes and rounded corners. Zero on desktop.
+static func safe_insets(vp: Viewport) -> Vector4:
+	if force_insets != Vector4.ZERO:
+		return force_insets
+	if not OS.has_feature("mobile"):
+		return Vector4.ZERO
+	var win := Vector2(DisplayServer.window_get_size())
+	var safe := Rect2(DisplayServer.get_display_safe_area())
+	if win.x <= 0.0 or safe.size.x <= 0.0:
+		return Vector4.ZERO
+	var k := vp.get_visible_rect().size.x / win.x
+	return Vector4(maxf(safe.position.x, 0.0), maxf(safe.position.y, 0.0),
+			maxf(win.x - safe.end.x, 0.0), maxf(win.y - safe.end.y, 0.0)) * k
+
+
+## Shrinks a full-rect control to the safe area, and keeps it there if the screen changes
+## (e.g. a foldable opening). Backgrounds should stay outside it so they still reach the edges.
+static func fit_safe_area(c: Control) -> void:
+	var apply := func():
+		if not c.is_inside_tree():
+			return
+		var ins := safe_insets(c.get_viewport())
+		c.offset_left = ins.x
+		c.offset_top = ins.y
+		c.offset_right = -ins.z
+		c.offset_bottom = -ins.w
+	c.ready.connect(func():
+		apply.call()
+		c.get_viewport().size_changed.connect(apply))
+
+
 ## Full-screen dim layer that blocks input to the game below.
 static func dim(alpha := 0.75) -> ColorRect:
 	var c := ColorRect.new()
@@ -263,6 +297,7 @@ static func column(parent: Control, sep := 16, margin := 28) -> VBoxContainer:
 	m.add_theme_constant_override("margin_top", 40)
 	m.add_theme_constant_override("margin_bottom", 40)
 	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fit_safe_area(m)
 	parent.add_child(m)
 	var v := VBoxContainer.new()
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
