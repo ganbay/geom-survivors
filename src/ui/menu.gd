@@ -34,7 +34,7 @@ func _ready() -> void:
 	bg.draw.connect(_draw_bg)
 	add_child(bg)
 	for i in 14:
-		floaters.append([Vector2(randf() * 720.0, randf() * 1400.0), Vector2(randf_range(-15, 15), randf_range(-25, -8)),
+		floaters.append([Vector2(randf(), randf()) * get_viewport_rect().size, Vector2(randf_range(-15, 15), randf_range(-25, -8)),
 				[0, 3, 4, 5, 6, -5].pick_random(), randf_range(10.0, 34.0), randf() * TAU, randf_range(-0.6, 0.6),
 				[Color(1.0, 0.25, 0.75), Color(1.0, 0.55, 0.15), Color(0.75, 0.4, 1.0), Balance.C_PLAYER].pick_random()])
 

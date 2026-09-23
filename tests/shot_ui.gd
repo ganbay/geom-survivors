@@ -1,13 +1,17 @@
 extends Node
 ## Captures the menu screens, pop-ups and in-run overlays at phone resolution (720x1280),
 ## using an in-memory save with sample history. Never writes the real save.
-## Usage: godot res://tests/shot_ui.tscn -- out=<dir>
+## Usage: godot res://tests/shot_ui.tscn -- out=<dir> [size=720x1280]
+## `size` is the stretched viewport: 720x1560 ≈ 19.5:9 phone, 960x1280 ≈ 3:4 tablet.
+## `notch=1` fakes a 90px top cutout and a 60px bottom gesture bar.
 
 var out := ""
 var sv: SubViewport
 var frames := 0
 var menu: Control
 var game: Game
+var tag := ""
+var size_arg := ""
 
 
 func _ready() -> void:
@@ -15,12 +19,21 @@ func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("out="):
 			out = a.substr(4)
+		elif a == "notch=1":
+			UI.force_insets = Vector4(0, 90, 0, 60)
+		elif a.begins_with("size="):
+			size_arg = a.substr(5)
+	if size_arg != "":
+		tag = "_" + size_arg
+	if UI.force_insets != Vector4.ZERO:
+		tag += "_notch"
 	Save.read_only = true
 	Save.cfg = ConfigFile.new()
 	Save.cfg.set_value("history", "runs", _sample_runs())
 	Save.cfg.set_value("best", "triangle", {"depth": 1, "time": 742.0, "won": false})
 	sv = SubViewport.new()
-	sv.size = Vector2i(720, 1280)
+	var dims := size_arg.split("x") if size_arg != "" else PackedStringArray(["720", "1280"])
+	sv.size = Vector2i(int(dims[0]), int(dims[1]))
 	sv.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(sv)
 	menu = load("res://scenes/main.tscn").instantiate()
@@ -52,6 +65,8 @@ func _process(_d: float) -> void:
 				game.build.add_weapon(id)
 			game.build.passives = {"radius": 3, "frequency": 2, "sides": 1}
 			game.build.recompute()
+		230:
+			_shot("ui_hud")
 		240:
 			game.open_pause()
 		255:
@@ -64,7 +79,7 @@ func _process(_d: float) -> void:
 
 
 func _shot(nm: String) -> void:
-	sv.get_texture().get_image().save_png("%s/%s.png" % [out, nm])
+	sv.get_texture().get_image().save_png("%s/%s%s.png" % [out, nm, tag])
 	print("shot ", nm)
 
 
