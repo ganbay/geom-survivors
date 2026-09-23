@@ -1,6 +1,6 @@
 class_name Joystick
 extends Node2D
-## Floating joystick: touch anywhere (below the HUD bar) to place it, drag to move.
+## Floating joystick: the base is placed where the finger first touches (below the HUD bar) and stays there.
 
 const RADIUS := 80.0
 const DEADZONE := 0.12
@@ -30,10 +30,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		queue_redraw()
 	elif event is InputEventScreenDrag and active and event.index == touch_index:
 		knob = event.position
-		# drag the base along if the finger goes far, so the stick never "sticks"
-		var off := knob - origin
-		if off.length() > RADIUS * 1.4:
-			origin = knob - off.normalized() * RADIUS * 1.4
 		_update_output()
 		queue_redraw()
 
