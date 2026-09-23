@@ -36,3 +36,13 @@ The bot never writes to the player's save file.
 ## Android
 
 The `Android` export preset is included. Building needs the Android SDK (platform-tools and build-tools) configured in Godot's Editor Settings.
+
+Debug APK (signed with Godot's debug keystore, arm64 + armv7):
+
+```sh
+godot --headless --export-debug "Android" build/GeomSurvivors-debug.apk
+adb install -r build/GeomSurvivors-debug.apk
+adb logcat -s godot   # script errors and prints
+```
+
+Bump `version/code` in `export_presets.cfg` for each build you hand out, so Android treats it as an update.
