@@ -65,7 +65,7 @@ func _force_evolution(spec: String) -> void:
 		b.add_weapon("line_laser")
 		b.weapon("line_laser").level = Balance.WEAPON_MAX_LEVEL
 		for pid in w.data.evolutions:
-			b.passives[pid] = 1
+			b.passives[pid] = Balance.PASSIVES[pid].max
 		b.recompute()
 		game.pending_cores = 1
 

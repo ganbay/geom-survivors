@@ -4,6 +4,8 @@ extends Node2D
 
 enum { XP_S, XP_M, XP_L, HEAL, MAGNET, CORE }
 
+const MERGE_RADIUS := 90.0  # at the gem cap, a new drop joins an existing gem within this distance
+
 var game: Game
 var batches: Array[ShapeBatch] = []
 var colors: Array[Color] = [Balance.C_XP, Balance.C_XP_BIG, Color(0.45, 1.0, 0.75), Color(1.0, 0.6, 0.7), Color(0.4, 0.6, 1.0), Balance.C_GOLD]
@@ -17,7 +19,6 @@ var val := PackedInt32Array()
 var kind := PackedInt32Array()
 var flying := PackedByteArray()
 var t := 0.0
-var overflow := 0  # XP from gems left far behind
 
 
 func setup(g: Game) -> void:
@@ -63,25 +64,61 @@ static func _xp_kind(v: int) -> int:
 
 func drop_xp(px: float, py: float, v: int) -> void:
 	if n >= Balance.GEM_MERGE_LIMIT:
-		# too many gems on the floor: fold the value into the closest XP gem
-		var best := -1
-		var bd := 1e12
-		for j in n:
-			if kind[j] > XP_L:
-				continue
-			var d := (x[j] - px) * (x[j] - px) + (y[j] - py) * (y[j] - py)
-			if d < bd:
-				bd = d
-				best = j
-		if best >= 0:
-			val[best] += v
-			kind[best] = _xp_kind(val[best])
+		# too many gems on the floor: fold into a gem right next to the drop if there is one,
+		# otherwise free a slot by merging the gem farthest from the player into its neighbour.
+		# XP always stays where it was dropped; it is never moved toward the player.
+		var near := _nearest_xp(px, py, -1)
+		if near >= 0 and _d2(near, px, py) < MERGE_RADIUS * MERGE_RADIUS:
+			_merge_into(near, v)
 			return
+		_evict_farthest()
 	_add(px, py, _xp_kind(v), v)
 	if not game.build.no_heal and randf() < Balance.HEAL_DROP_CHANCE:
 		_add(px + 10.0, py, HEAL, 0)
 	elif randf() < Balance.MAGNET_DROP_CHANCE:
 		_add(px + 10.0, py, MAGNET, 0)
+
+
+func _d2(j: int, px: float, py: float) -> float:
+	return (x[j] - px) * (x[j] - px) + (y[j] - py) * (y[j] - py)
+
+
+func _nearest_xp(px: float, py: float, skip: int) -> int:
+	var best := -1
+	var bd := 1e12
+	for j in n:
+		if j == skip or kind[j] > XP_L or flying[j]:
+			continue
+		var d := _d2(j, px, py)
+		if d < bd:
+			bd = d
+			best = j
+	return best
+
+
+func _merge_into(j: int, v: int) -> void:
+	val[j] += v
+	kind[j] = _xp_kind(val[j])
+
+
+## Merge the XP gem farthest from the player into its nearest XP neighbour (in place).
+func _evict_farthest() -> void:
+	var p := game.player.position
+	var far := -1
+	var fd := -1.0
+	for j in n:
+		if kind[j] > XP_L or flying[j]:
+			continue
+		var d := _d2(j, p.x, p.y)
+		if d > fd:
+			fd = d
+			far = j
+	if far < 0:
+		return
+	var into := _nearest_xp(x[far], y[far], far)
+	if into >= 0:
+		_merge_into(into, val[far])
+	_remove(far)
 
 
 func drop_core(px: float, py: float) -> void:
@@ -111,7 +148,6 @@ func magnetize_all() -> void:
 
 func clear_all() -> void:
 	n = 0
-	overflow = 0
 
 
 func update(delta: float) -> void:
@@ -120,17 +156,11 @@ func update(delta: float) -> void:
 	var pick := game.build.pickup_radius
 	var pick2 := pick * pick
 	var collect2 := pow(Balance.PLAYER_RADIUS + 10.0, 2.0)
-	var far2 := pow(game.view_radius() * 1.6, 2.0)
 	var i := 0
 	while i < n:
 		var ox := p.x - x[i]
 		var oy := p.y - y[i]
 		var d2 := ox * ox + oy * oy
-		if d2 > far2 and kind[i] <= XP_L:
-			# left far behind: condense into the overflow pool instead of being lost
-			overflow += val[i]
-			_remove(i)
-			continue
 		if flying[i]:
 			var d := sqrt(d2) + 0.001
 			var sp := sqrt(vx[i] * vx[i] + vy[i] * vy[i]) + 900.0 * delta
@@ -150,12 +180,6 @@ func update(delta: float) -> void:
 			_remove(i)
 		else:
 			i += 1
-	if overflow >= 25:
-		# drop the condensed XP somewhere on screen, ahead of the player
-		var half := game.view_size() * 0.35
-		var dir := game.player.facing
-		_add(p.x + dir.x * half.x, p.y + dir.y * half.y, XP_L, overflow)
-		overflow = 0
 
 
 func _remove(i: int) -> void:

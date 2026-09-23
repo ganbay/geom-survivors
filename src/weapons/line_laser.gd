@@ -1,5 +1,5 @@
 extends Weapon
-## Instant piercing beam(s) in the movement direction.
+## Instant piercing beam(s): the first aims at the closest enemy, extra beams at random nearby enemies.
 ## Evolutions: density = Prism (3-beam fans) · frequency = Lighthouse (permanent sweeping beams)
 ##             sides = Polygon Cage (laser walls around you).
 
@@ -32,15 +32,13 @@ func fire() -> void:
 		return
 	var p := game.player.position
 	var count := int(s.count)
-	var base := facing().angle()
+	var length: float = 480.0 * s.area
 	var angles: Array[float] = []
-	for k in count:
-		var a := base + TAU * k / count
+	for a in _aim_angles(p, count, length):
 		if evo == "density":
 			angles.append_array([a - 0.28, a, a + 0.28])
 		else:
 			angles.append(a)
-	var length: float = 480.0 * s.area
 	var width: float = 10.0 * s.area
 	var d := dmg()
 	for a in angles:
@@ -48,6 +46,33 @@ func fire() -> void:
 		_beam_hit(p, dir, length, width, d)
 		game.fx.line(PackedVector2Array([p, p + dir * length]), Color(0.6, 1.0, 1.0), 0.18, width)
 	Sfx.play("laser")
+
+
+## One angle per beam. Beam 0 locks the closest enemy, the rest pick random enemies among
+## the nearby pack (distinct while there are enough). With no enemy in reach, beams fan
+## out evenly from the movement direction.
+func _aim_angles(p: Vector2, count: int, length: float) -> Array[float]:
+	var en := game.enemies
+	var near := en.nearest_to_player(maxi(count * 3, 8), length)
+	var out: Array[float] = []
+	if near.is_empty():
+		var base := facing().angle()
+		for k in count:
+			out.append(base + TAU * k / count)
+		return out
+	var closest := 0
+	for k in range(1, near.size()):
+		if en.pd2[near[k]] < en.pd2[near[closest]]:
+			closest = k
+	var picks: Array = [near[closest]]
+	var rest: Array = Array(near)
+	rest.remove_at(closest)
+	rest.shuffle()
+	for k in count - 1:
+		picks.append(rest[k] if k < rest.size() else near[randi() % near.size()])
+	for j in picks:
+		out.append(Vector2(en.px[j] - p.x, en.py[j] - p.y).angle())
+	return out
 
 
 func _beam_hit(p: Vector2, dir: Vector2, length: float, width: float, d: float) -> void:

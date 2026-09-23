@@ -34,6 +34,11 @@ const OFFER_COUNT := 3
 const REROLLS := 2
 const BANISHES := 1
 const SKIPS := 1
+# Level-up offer weights: things you already own show up far more often than new ones.
+const OFFER_W_OWNED_WEAPON := 2.6
+const OFFER_W_OWNED_PASSIVE := 2.0
+const OFFER_W_NEW_WEAPON := 0.6
+const OFFER_W_NEW_PASSIVE := 0.5
 const OVERCLOCK_OFFER_CHANCE := 0.22   # chance that one card is replaced by an Overclock
 const CRIT_MULT := 2.0
 const PLAYER_RADIUS := 16.0
@@ -72,7 +77,7 @@ const CHARACTERS := {
 
 # ---------------------------------------------------------------- weapons
 # `base` = level 1 stats. `levels[i]` = deltas applied when reaching level i+2.
-# `evolutions`: passive id -> evolution. A max-level weapon + an owned passive evolves at a core.
+# `evolutions`: passive id -> evolution. A max-level weapon + that passive at max level evolves at a core.
 # Each passive is the key for exactly 3 weapons, and is CLAIMED by the first weapon that uses it.
 # Stat keys: damage, cooldown, count, speed, pierce, area, duration, bounces, knockback
 const WEAPONS := {
@@ -111,7 +116,7 @@ const WEAPONS := {
 	},
 	"line_laser": {
 		"name": "Line Laser", "tags": ["VERTEX", "PULSE"],
-		"desc": "Fires a piercing beam in the direction you move.",
+		"desc": "Fires a piercing beam at the closest enemy. Extra beams hit random nearby foes.",
 		"base": {"damage": 16.0, "cooldown": 1.6, "count": 1, "area": 1.0, "duration": 1.0, "knockback": 30.0},
 		"levels": [{"damage": 8.0}, {"cooldown": -0.25}, {"area": 0.3}, {"count": 1}, {"damage": 14.0}],
 		"evolutions": {
@@ -230,11 +235,11 @@ const HEX_SPLIT_COUNT := 3
 
 ## Enemy contact/bullet damage multiplier over time.
 static func enemy_damage_mult(t: float) -> float:
-	return 1.0 + t / 60.0 * 0.04
+	return 1.0 + t / 60.0 * 0.06
 
 ## Enemy HP multiplier over time (t in seconds).
 static func enemy_hp_mult(t: float) -> float:
-	return 1.0 + t / 60.0 * 0.2 + pow(t / 60.0, 2.0) * 0.018
+	return 1.0 + t / 60.0 * 0.25 + pow(t / 60.0, 2.0) * 0.028
 
 # ---------------------------------------------------------------- waves
 # Each phase lasts until the next one's `t`. interval = seconds between spawn batches.

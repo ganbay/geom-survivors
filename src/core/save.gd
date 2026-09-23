@@ -1,7 +1,8 @@
 extends Node
-## Settings and the (deliberately tiny) persistent progress: unlocked depth and best results.
+## Settings and persistent progress: unlocked depth, best results and run history.
 
 const PATH := "user://save.cfg"
+const HISTORY_MAX := 60
 
 var cfg := ConfigFile.new()
 ## Parameters for the next run, set by the menu.
@@ -45,4 +46,20 @@ func record_run(char_id: String, depth: int, time: float, won: bool) -> void:
 	var b := best(char_id)
 	if depth > b.get("depth", -1) or (depth == b.get("depth", -1) and time > b.get("time", 0.0)):
 		cfg.set_value("best", char_id, {"depth": depth, "time": time, "won": won})
+	cfg.save(PATH)
+
+
+## Past runs, newest first. Entry layout is built by Game.history_entry().
+func history() -> Array:
+	return cfg.get_value("history", "runs", [])
+
+
+func record_history(entry: Dictionary) -> void:
+	if read_only:
+		return
+	var runs := history()
+	runs.push_front(entry)
+	if runs.size() > HISTORY_MAX:
+		runs.resize(HISTORY_MAX)
+	cfg.set_value("history", "runs", runs)
 	cfg.save(PATH)

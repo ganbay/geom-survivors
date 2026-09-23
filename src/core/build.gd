@@ -170,16 +170,20 @@ func vertex_flags() -> int:
 
 # ------------------------------------------------------------------ evolution
 
-## All possible evolutions right now: [{weapon, passive}] for max-level weapons x owned, unclaimed keys.
+## All possible evolutions right now: [{weapon, passive}] for max-level weapons x max-level, unclaimed keys.
 func evolution_options() -> Array:
 	var out := []
 	for w in weapons:
 		if w.evolved or w.level < Balance.WEAPON_MAX_LEVEL:
 			continue
 		for pid in w.data.evolutions:
-			if passives.has(pid) and not claimed.has(pid):
+			if passive_maxed(pid) and not claimed.has(pid):
 				out.append({"weapon": w, "passive": pid})
 	return out
+
+
+func passive_maxed(pid: String) -> bool:
+	return passives.get(pid, 0) >= Balance.PASSIVES[pid].max
 
 
 func evolve(w: Weapon, passive_id: String) -> void:
@@ -197,8 +201,10 @@ func evolution_status(weapon_id: String, pid: String) -> String:
 		if claimed[pid] == weapon_id:
 			return "✦ %s (evolved)" % evo_name
 		return "✗ %s — %s taken by %s" % [evo_name, pname, _weapon_name(claimed[pid])]
+	if passive_maxed(pid):
+		return "✓ %s ← %s (max)" % [evo_name, pname]
 	if passives.has(pid):
-		return "✓ %s ← %s (owned)" % [evo_name, pname]
+		return "· %s ← %s %d/%d (needs max)" % [evo_name, pname, passives[pid], Balance.PASSIVES[pid].max]
 	return "· %s ← %s" % [evo_name, pname]
 
 
@@ -220,10 +226,10 @@ func make_offers() -> Array:
 		if w:
 			if w.level < Balance.WEAPON_MAX_LEVEL:
 				pool.append({"kind": "weapon", "id": id, "level": w.level + 1, "new": false})
-				weights.append(1.0)
+				weights.append(Balance.OFFER_W_OWNED_WEAPON)
 		elif weapons.size() < Balance.MAX_WEAPONS:
 			pool.append({"kind": "weapon", "id": id, "level": 1, "new": true})
-			weights.append(0.7)
+			weights.append(Balance.OFFER_W_NEW_WEAPON)
 	for id in Balance.PASSIVES:
 		if banished.has(id):
 			continue
@@ -231,10 +237,10 @@ func make_offers() -> Array:
 		if lv > 0:
 			if lv < Balance.PASSIVES[id].max:
 				pool.append({"kind": "passive", "id": id, "level": lv + 1, "new": false})
-				weights.append(0.9)
+				weights.append(Balance.OFFER_W_OWNED_PASSIVE)
 		elif passives.size() < Balance.MAX_PASSIVES:
 			pool.append({"kind": "passive", "id": id, "level": 1, "new": true})
-			weights.append(0.6)
+			weights.append(Balance.OFFER_W_NEW_PASSIVE)
 	var count := maxi(1, offer_count)
 	var offers: Array = []
 	while offers.size() < count and not pool.is_empty():
@@ -324,6 +330,11 @@ func offer_hints(o: Dictionary) -> Array[String]:
 				for pid in Balance.WEAPONS[o.id].evolutions:
 					hints.append(evolution_status(o.id, pid))
 		"passive":
+			if not o.new and o.level >= Balance.PASSIVES[o.id].max and not claimed.has(o.id):
+				for wid in Balance.WEAPONS:
+					var w := weapon(wid)
+					if w and not w.evolved and Balance.WEAPONS[wid].evolutions.has(o.id):
+						hints.append("✦ Max level: unlocks %s for %s" % [Balance.WEAPONS[wid].evolutions[o.id].name, w.data.name])
 			if o.new:
 				if claimed.has(o.id):
 					hints.append("Evolution key already used by %s" % _weapon_name(claimed[o.id]))

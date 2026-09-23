@@ -18,6 +18,7 @@ var kills := 0
 var pending_levels := 0
 var pending_cores := 0
 var damage_by := {}
+var damage_taken := 0.0
 var victory_timer := -1.0
 
 var build: Build
@@ -378,6 +379,7 @@ func _end_run(won: bool) -> void:
 		if Save.depth_unlocked() > before:
 			unlocked = Save.depth_unlocked()
 	Save.record_run(character_id, depth, time, won)
+	Save.record_history(history_entry("win" if won else "dead"))
 	Sfx.play("win" if won else "gameover")
 	get_tree().paused = true
 	gameover.open(won, unlocked)
@@ -389,6 +391,34 @@ func restart() -> void:
 
 
 func quit_to_menu() -> void:
+	if state != State.OVER and time >= 10.0:
+		Save.record_history(history_entry("quit"))
 	get_tree().paused = false
 	Sfx.stop_music()
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
+
+
+## Snapshot of this run for the history screen. result: "win" | "dead" | "quit".
+func history_entry(result: String) -> Dictionary:
+	var weapons: Array = []
+	var counted := {}
+	for w in build.weapons:
+		# damage is tracked by display name, so an evolved weapon's total spans both names
+		var names := [w.data.name]
+		if w.evolved:
+			names.append(w.display_name())
+		var dealt := 0.0
+		for nm in names:
+			dealt += damage_by.get(nm, 0.0)
+			counted[nm] = true
+		weapons.append({"id": w.id, "evo": w.evo, "name": w.display_name(), "level": w.level, "damage": dealt})
+	var other := {}
+	for src in damage_by:
+		if not counted.has(src) and damage_by[src] >= 1.0:
+			other[src] = damage_by[src]
+	return {
+		"ts": int(Time.get_unix_time_from_system()), "result": result,
+		"character": character_id, "depth": depth, "time": time, "level": level, "kills": kills,
+		"damage_taken": damage_taken, "weapons": weapons, "other_damage": other,
+		"passives": build.passives.duplicate(), "overclocks": build.overclocks.duplicate(),
+	}
