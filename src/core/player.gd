@@ -48,6 +48,7 @@ func contact(dmg: float) -> void:
 		return
 	var d := maxf(dmg - game.build.armor, 1.0) * game.build.taken_mult
 	hp -= d
+	game.damage_taken += d
 	iframes = Balance.PLAYER_IFRAMES
 	hurt_flash = 0.25
 	for w in game.build.weapons:

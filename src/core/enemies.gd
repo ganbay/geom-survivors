@@ -545,14 +545,61 @@ func _draw() -> void:
 			Shapes.draw_neon_line(self, a, a + Vector2(dx[i], dy[i]) * Balance.DARTER_DASH_SPEED * Balance.DARTER_DASH_TIME,
 					Color(Balance.C_DANGER, blink), 2.0)
 		elif beh == BOSS:
-			var c := Vector2(px[i], py[i])
-			var sides := t_sides[t]
-			if type_ids[t] == "boss_final":
-				sides = maxi(3, int(tmr2[i]))
-			var col := Color(1, 1, 1) if flash[i] > 0.0 else t_color[t]
-			var r := t_radius[t]
-			Shapes.draw_neon_poly(self, Shapes.points(sides, r, rot[i]), col, 4.0, 0.12)
-			Shapes.draw_neon_poly(self, Shapes.points(sides, r * 0.55, -rot[i] * 1.7), Color(col, 0.7), 2.5)
-			if st[i] == 1:
-				var blink := 0.4 + 0.4 * sin(tmr[i] * 30.0)
-				Shapes.draw_neon_line(self, c, c + Vector2(dx[i], dy[i]) * 405.0, Color(Balance.C_DANGER, blink), 3.0)
+			_draw_boss(i)
+
+
+## Bosses are drawn by hand (they are few): a breathing hull, a counter-rotating core,
+## sparks orbiting the vertices, cracks as HP drops, and a hot glow while charging.
+func _draw_boss(i: int) -> void:
+	var t := typ[i]
+	var c := Vector2(px[i], py[i])
+	var sides := t_sides[t]
+	if type_ids[t] == "boss_final":
+		sides = maxi(3, int(tmr2[i]))
+	var base_col := t_color[t]
+	var col := Color(1, 1, 1) if flash[i] > 0.0 else base_col
+	var r := t_radius[t]
+	var now := game.time
+	var frac := clampf(hp[i] / mhp[i], 0.0, 1.0)
+	var state := st[i]
+	# breathing: faster and deeper when hurt, squashes while winding up a charge
+	var pulse := 1.0 + sin(now * (3.0 + (1.0 - frac) * 4.0)) * 0.05
+	var squash := Vector2.ONE
+	if state == 1:
+		var k := 1.0 - clampf(tmr[i] / 0.8, 0.0, 1.0)
+		squash = Vector2(1.0 + k * 0.18, 1.0 - k * 0.12)
+	elif state == 2:
+		pulse *= 1.08
+	var xf := Transform2D(rot[i], squash * pulse, 0.0, c)
+
+	# outer aura ring
+	var aura_col := Balance.C_DANGER if state >= 1 and state <= 2 else base_col
+	Shapes.draw_neon_ring(self, c, r * (1.35 + sin(now * 2.0) * 0.06), Color(aura_col, 0.25 + (0.35 if state == 1 else 0.0)), 2.0, 48)
+	# hull and counter-rotating core
+	Shapes.draw_neon_poly(self, xf * Shapes.points(sides, r, 0.0), col, 4.0, 0.14 + (1.0 - frac) * 0.12)
+	var core_xf := Transform2D(-rot[i] * 2.7 - now, Vector2.ONE * pulse, 0.0, c)
+	Shapes.draw_neon_poly(self, core_xf * Shapes.points(sides, r * 0.5, 0.0), Color(col, 0.8), 2.5)
+	Shapes.draw_neon_ring(self, c, r * (0.16 + 0.04 * sin(now * 8.0)), Color(1, 1, 1, 0.85), 2.0, 16)
+	# spokes from core to hull vertices
+	var hull := xf * Shapes.points(sides, r, 0.0)
+	for v in hull:
+		draw_line(c, c.lerp(v, 0.9), Color(col, 0.25), 1.5)
+	# vertex sparks orbiting just outside the hull
+	for k in hull.size():
+		var a := rot[i] + TAU * k / sides + now * 1.6
+		var sp := c + Vector2(cos(a), sin(a)) * r * 1.18 * pulse
+		draw_circle(sp, 3.5, Color(col, 0.9))
+	# cracks: one jagged line per quarter of HP lost
+	var cracks := int((1.0 - frac) * 4.0)
+	for k in cracks:
+		var a0 := rot[i] + k * 1.9 + 0.4
+		var pts := PackedVector2Array([c + Vector2(cos(a0), sin(a0)) * r * 0.2])
+		for step in 3:
+			var rr := r * (0.4 + step * 0.25)
+			var aj := a0 + (0.25 if step % 2 == 0 else -0.25)
+			pts.append(c + Vector2(cos(aj), sin(aj)) * rr * pulse)
+		draw_polyline(pts, Color(1, 1, 1, 0.55), 1.5)
+	# charge telegraph
+	if state == 1:
+		var blink := 0.4 + 0.4 * sin(tmr[i] * 30.0)
+		Shapes.draw_neon_line(self, c, c + Vector2(dx[i], dy[i]) * 405.0, Color(Balance.C_DANGER, blink), 3.0)

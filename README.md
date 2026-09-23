@@ -12,7 +12,7 @@ Open the project in Godot 4.7 and press F5, or run `godot --path .`. Drag anywhe
 - 3 characters (Triangle, Square, Circle), 8 weapons, 8 passives.
 - 4 weapon slots and 4 passive slots.
 - **Resonance:** items carry tags (VERTEX, ORBIT, PULSE, CHAIN, FRACTURE). Holding 2 or 4 items with the same tag unlocks bonuses.
-- **Evolutions:** each weapon has 3 evolutions, each keyed by a different passive, 24 in total. Evolving *claims* that passive, so no other weapon can use it.
+- **Evolutions:** each weapon has 3 evolutions, each keyed by a different passive, 24 in total. A weapon evolves at a core once both it and its key passive are at max level. Evolving *claims* that passive, so no other weapon can use it.
 - **Overclocks:** optional level-up cards that give a strong bonus in exchange for a permanent drawback.
 - **No permanent power progression.** Winning only unlocks the next Depth (0–10), which adds a stacking difficulty modifier.
 

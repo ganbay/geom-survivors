@@ -17,11 +17,9 @@ func setup(g: Game) -> void:
 	add_child(root)
 	root.add_child(UI.dim(0.88))
 	var col := UI.column(root, 14, 28)
-	col.add_child(UI.label("PAUSED", 46, Balance.C_PLAYER, HORIZONTAL_ALIGNMENT_CENTER))
-	body = VBoxContainer.new()
-	body.add_theme_constant_override("separation", 8)
-	col.add_child(body)
-	col.add_child(UI.button("RESUME", func(): game.close_pause()))
+	col.add_child(UI.glow_label("PAUSED", 46, Balance.C_PLAYER, HORIZONTAL_ALIGNMENT_CENTER, 8))
+	body = UI.scroll_body(col)
+	col.add_child(UI.button("RESUME", func(): game.close_pause(), 80, true))
 	col.add_child(UI.button("QUIT RUN", func(): game.quit_to_menu(), 60))
 	visible = false
 
@@ -35,7 +33,7 @@ func open() -> void:
 
 static func build_summary(game: Game, into: VBoxContainer) -> void:
 	var b := game.build
-	into.add_child(UI.label("WEAPONS   %d/%d" % [b.weapons.size(), Balance.MAX_WEAPONS], 22, Balance.C_TEXT_DIM))
+	into.add_child(UI.header("WEAPONS  %d/%d" % [b.weapons.size(), Balance.MAX_WEAPONS]))
 	for w in b.weapons:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
@@ -48,11 +46,17 @@ static func build_summary(game: Game, into: VBoxContainer) -> void:
 		row.add_child(UI.label("%d DPS" % dps, 20, Balance.C_TEXT_DIM))
 		into.add_child(row)
 		if not w.evolved:
+			# All evolution routes on one wrapping row under the weapon.
+			var indent := MarginContainer.new()
+			indent.add_theme_constant_override("margin_left", 54)
+			var evo_row := HFlowContainer.new()
+			evo_row.add_theme_constant_override("h_separation", 18)
+			indent.add_child(evo_row)
 			for pid in w.data.evolutions:
-				var h := b.evolution_status(w.id, pid)
-				var l2 := UI.label("      " + h, 17, UI.hint_color(h))
-				into.add_child(l2)
-	into.add_child(UI.label("PASSIVES   %d/%d" % [b.passives.size(), Balance.MAX_PASSIVES], 22, Balance.C_TEXT_DIM))
+				var h := _short_evo(b, w.id, pid)
+				evo_row.add_child(UI.label(h, 17, UI.hint_color(h)))
+			into.add_child(indent)
+	into.add_child(UI.header("PASSIVES  %d/%d" % [b.passives.size(), Balance.MAX_PASSIVES]))
 	var prow := HFlowContainer.new()
 	prow.add_theme_constant_override("h_separation", 16)
 	for id in b.passives:
@@ -66,15 +70,28 @@ static func build_summary(game: Game, into: VBoxContainer) -> void:
 		for id in b.overclocks:
 			names.append(Balance.OVERCLOCKS[id].name)
 		into.add_child(UI.wrap_label("OVERCLOCKS: " + ", ".join(names), 20, Color(1.0, 0.55, 0.25)))
-	into.add_child(UI.label("RESONANCE", 22, Balance.C_TEXT_DIM))
+	into.add_child(UI.header("RESONANCE"))
+	var th: Array = Balance.RESONANCE_THRESHOLDS
 	for tag in Balance.TAG_COLORS:
 		var c: int = b.tag_counts.get(tag, 0)
 		if c == 0:
 			continue
 		var t := b.tier(tag)
-		var th: Array = Balance.RESONANCE_THRESHOLDS
-		var line := "%s %d" % [tag, c]
-		for k in th.size():
-			var mark := "✓" if t > k else "%d:" % th[k]
-			line += "\n  %s %s" % [mark, Balance.RESONANCE[tag][k]]
-		into.add_child(UI.wrap_label(line, 19, Balance.TAG_COLORS[tag] if t > 0 else Balance.C_TEXT_DIM))
+		# One line per tag: count, active tiers, and only the next unlock.
+		var line := "%s %d %s" % [tag, c, "✓".repeat(t)]
+		if t < th.size():
+			line += "  next %d: %s" % [th[t], Balance.RESONANCE[tag][t]]
+		into.add_child(UI.wrap_label(line, 18, Balance.TAG_COLORS[tag] if t > 0 else Balance.C_TEXT_DIM))
+
+
+## Compact evolution hint: same leading symbol as Build.evolution_status, fewer words.
+static func _short_evo(b: Build, weapon_id: String, pid: String) -> String:
+	var evo_name: String = Balance.WEAPONS[weapon_id].evolutions[pid].name
+	var pname: String = Balance.PASSIVES[pid].name
+	if b.claimed.has(pid):
+		return "✦ %s" % evo_name if b.claimed[pid] == weapon_id else "✗ %s (%s taken)" % [evo_name, pname]
+	if b.passive_maxed(pid):
+		return "✓ %s ← %s" % [evo_name, pname]
+	if b.passives.has(pid):
+		return "· %s ← %s %d/%d" % [evo_name, pname, b.passives[pid], Balance.PASSIVES[pid].max]
+	return "· %s ← %s" % [evo_name, pname]
