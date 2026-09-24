@@ -1,6 +1,6 @@
 class_name LevelUpUI
 extends CanvasLayer
-## Card picker used for level-ups and evolution cores.
+## Card picker used for level-ups and overclock cores.
 
 const INPUT_GRACE := 0.4  # ignore taps right after opening (thumb is still on the joystick)
 
@@ -122,20 +122,20 @@ func _card(o: Dictionary) -> PanelContainer:
 			nm = d.name
 			sub = "OVERCLOCK · PERMANENT TRADE-OFF"
 			desc = "+ " + d.desc.trim_prefix("+")
-			cost = "− " + d.cost
+			cost = "− " + d.cost.trim_prefix("-")
 			accent = Color(1.0, 0.5, 0.2)
 		"evolve":
 			var d: Dictionary = Balance.WEAPONS[o.id]
 			var e: Dictionary = d.evolutions[o.passive]
 			nm = e.name
-			sub = "%s + %s  ·  CLAIMS %s" % [d.name.to_upper(), Balance.PASSIVES[o.passive].name.to_upper(), Balance.PASSIVES[o.passive].name.to_upper()]
+			sub = "EVOLUTION · %s + %s  ·  CLAIMS %s" % [d.name.to_upper(), Balance.PASSIVES[o.passive].name.to_upper(), Balance.PASSIVES[o.passive].name.to_upper()]
 			desc = e.desc
 			accent = Balance.C_GOLD
 			icon_kind = "weapon"
 			evolved = true
 		"bonus":
-			nm = "Core Overflow"
-			sub = "NO EVOLUTION READY"
+			nm = "Vent Core"
+			sub = "DECLINE THE OVERCLOCK"
 			desc = "Gain a free level-up and heal 30%."
 			accent = Balance.C_GOLD
 			icon_kind = "heal"
@@ -198,7 +198,9 @@ func _ready_for_input() -> bool:
 func _on_card(o: Dictionary) -> void:
 	if not _ready_for_input():
 		return
-	if banish_mode and o.kind in ["weapon", "passive", "overclock"]:
+	if banish_mode:
+		if not o.kind in ["weapon", "passive"]:
+			return  # evolutions and fallback cards can't be banished
 		banish_mode = false
 		game.build.banishes -= 1
 		game.build.banished[o.id] = true

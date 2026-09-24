@@ -1,6 +1,6 @@
 class_name Gems
 extends Node2D
-## Pickups: XP gems, heals, magnets and evolution cores.
+## Pickups: XP gems, heals, magnets and overclock cores.
 
 enum { XP_S, XP_M, XP_L, HEAL, MAGNET, CORE }
 

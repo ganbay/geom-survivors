@@ -39,6 +39,7 @@ var pause_ui: PauseUI
 var gameover: GameOverUI
 
 var _arc_queue: Array = []  # CHAIN tier-2 arcs, resolved after all weapons fired
+var _blast_queue: Array = []  # Volatile Matter explosions, resolved the same way
 var _frame_ema := 1.0 / 60.0
 var _slow_time := 0.0
 
@@ -102,7 +103,6 @@ func _ready() -> void:
 	pause_ui.setup(self)
 	gameover.setup(self)
 
-	enemies.speed_mult = 1.0 + depth_mods.get("enemy_speed", 0.0)
 	build.recompute()
 	player.hp = build.max_hp
 	build.add_weapon(Balance.CHARACTERS[character_id].start)
@@ -128,9 +128,12 @@ func view_radius() -> float:
 
 
 func dynamic_damage_mult() -> float:
+	var m := 1.0
 	if build.anchor > 0.0 and player.is_still():
-		return 1.0 + build.anchor
-	return 1.0
+		m += build.anchor
+	if build.redline > 0.0 and player.hp < build.max_hp * 0.5:
+		m += build.redline
+	return m
 
 
 # ------------------------------------------------------------------ main loop
@@ -225,6 +228,15 @@ func _process_arcs() -> void:
 			var to := Vector2(enemies.px[j], enemies.py[j])
 			enemies.hit(j, a[3], 0.0, 0.0, "Arc")
 			fx.line(PackedVector2Array([Vector2(a[0], a[1]), to]), Balance.TAG_COLORS.CHAIN, 0.12, 2.0)
+	var blasts := _blast_queue
+	_blast_queue = []
+	var r := Balance.VOLATILE_RADIUS * build.area_mult
+	for b in blasts:
+		fx.ring(b.x, b.y, r, Color(1.0, 0.55, 0.2), 0.25, 3.0)
+		var c := enemies.query(b.x, b.y, r)
+		var hits := enemies.qbuf.slice(0, c)
+		for j in hits:
+			enemies.hit(j, b.dmg, 0.0, 0.0, "Volatile")
 
 
 func on_kill(x: float, y: float, source: String) -> void:
@@ -232,6 +244,9 @@ func on_kill(x: float, y: float, source: String) -> void:
 	Sfx.play("kill")
 	if build.lifesteal > 0.0:
 		player.heal(build.lifesteal)
+	# Volatile Matter: blasts are queued so a kill inside a blast doesn't recurse
+	if build.volatile > 0.0 and source != "Volatile" and _blast_queue.size() < 24 and randf() < build.volatile:
+		_blast_queue.append({"x": x, "y": y, "dmg": (8.0 + time / 60.0 * 2.0) * build.dmg_mult})
 	# FRACTURE resonance: kills burst into shards (shard kills only chain at tier 2)
 	var t := build.tier("FRACTURE")
 	if t > 0 and (source != "Fracture" or t >= 2):
@@ -255,9 +270,10 @@ func on_boss_killed(id: String, x: float, y: float) -> void:
 	fx.ring(x, y, 300.0, Balance.C_GOLD, 0.8, 6.0)
 	fx.burst(x, y, Balance.C_GOLD, 40, 60.0)
 	hostile.clear_all()
+	enemies.hazards.clear()
 	Sfx.play("evolve")
-	if id == "boss_final":
-		hud.banner("THE POLYGON IS BROKEN", Balance.C_GOLD, 3.0)
+	if Balance.BOSSES[id].get("final", false):
+		hud.banner("%s IS BROKEN" % Balance.BOSSES[id].name, Balance.C_GOLD, 3.0)
 		victory_timer = 2.5
 	else:
 		gems.drop_core(x, y)
@@ -283,14 +299,10 @@ func add_xp(v: int) -> void:
 func _maybe_open_choice() -> void:
 	if pending_cores > 0:
 		pending_cores -= 1
-		var offers: Array = []
-		for opt in build.evolution_options():
-			var w: Weapon = opt.weapon
-			offers.append({"kind": "evolve", "id": w.id, "passive": opt.passive, "level": w.level, "new": false})
-		var sub := "Pick one. The passive used becomes CLAIMED." if offers.size() > 0 else "Nothing can evolve yet"
-		if offers.is_empty():
-			offers.append({"kind": "bonus", "id": "bonus", "level": 1, "new": false})
-		_open_choice("CORE", sub, offers, false, Balance.C_GOLD)
+		var offers := build.make_overclock_offers()
+		var sub := "Take a permanent trade-off, or vent the core" if offers.size() > 0 else "No overclocks left"
+		offers.append({"kind": "bonus", "id": "bonus", "level": 1, "new": false})
+		_open_choice("OVERCLOCK CORE", sub, offers, false, Color(1.0, 0.55, 0.2))
 		Sfx.play("evolve")
 	elif pending_levels > 0:
 		pending_levels -= 1
@@ -312,6 +324,7 @@ func on_offer_chosen(o: Dictionary) -> void:
 			build.evolve(w, o.passive)
 			hud.banner(w.display_name().to_upper(), Balance.C_GOLD, 2.0)
 			fx.ring(player.position.x, player.position.y, 200.0, Balance.C_GOLD, 0.6, 5.0)
+			Sfx.play("evolve")
 		"bonus":
 			player.heal(build.max_hp * 0.3)
 			pending_levels += 1
