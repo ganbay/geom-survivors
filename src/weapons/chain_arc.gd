@@ -1,6 +1,6 @@
 extends Weapon
 ## A spark hits the nearest enemy, then jumps between nearby enemies.
-## Evolutions: frequency = Tesla Grid (no falloff, long jumps, faster) · entropy = Thunderstorm (random strikes)
+## Evolutions: frequency = Tesla Grid (no falloff, long jumps, faster) · entropy = Thunderstorm (strikes nearest enemies)
 ##             hull = Static Skin (shock everything near you; discharge when hit).
 
 var hurt_cd := 0.0
@@ -28,13 +28,13 @@ func fire() -> void:
 	for k in count:
 		_spark(game.player.position, starts[k % starts.size()], int(s.bounces), dmg())
 	if evo == "frequency":
-		timer = s.cooldown * 0.7
+		timer = s.cooldown * 0.75
 	Sfx.play("zap")
 
 
 func _spark(from: Vector2, first: int, hops: int, d: float) -> void:
 	var en := game.enemies
-	var jump: float = 150.0 * s.area * (2.0 if evo == "frequency" else 1.0)
+	var jump := 150.0 * (2.0 if evo == "frequency" else 1.0)
 	var visited := PackedInt32Array()
 	var pts := PackedVector2Array([from])
 	var j := first
@@ -52,30 +52,26 @@ func _spark(from: Vector2, first: int, hops: int, d: float) -> void:
 	game.fx.line(_jagged(pts), Balance.TAG_COLORS.CHAIN, 0.16, 2.5)
 
 
-## Thunderstorm: bolts from the sky on random enemies anywhere on screen.
+## Thunderstorm: bolts from the sky on the enemies closest to the player. With fewer enemies
+## than bolts, the closest ones get struck again.
 func _storm() -> void:
 	var en := game.enemies
-	if en.n == 0:
+	var strikes := 2 + int(s.count) * 2
+	var targets := en.nearest_to_player(strikes, game.view_radius() * 0.8)
+	if targets.is_empty():
 		timer = 0.2
 		return
-	var strikes := 2 + int(s.count) * 2
-	var view2 := pow(game.view_radius() * 0.8, 2.0)
 	var blast: float = 55.0 * s.area
 	for k in strikes:
-		var j := -1
-		for attempt in 12:
-			var cand := randi() % en.n
-			if not en.dead[cand] and en.pd2[cand] < view2:
-				j = cand
-				break
-		if j < 0:
-			continue
+		var j := targets[k % targets.size()]
+		if en.dead[j]:
+			continue  # already killed by an earlier bolt's blast
 		var pos := Vector2(en.px[j], en.py[j])
 		var c := en.query(pos.x, pos.y, blast)
-		var targets := en.qbuf.slice(0, c)
+		var hits := en.qbuf.slice(0, c)
 		var crit := randf() < game.build.crit
-		for t in targets:
-			en.hit(t, dmg() * 1.3 * (Balance.CRIT_MULT if crit else 1.0), 0.0, 0.0, display_name())
+		for t in hits:
+			en.hit(t, dmg() * 0.8 * (Balance.CRIT_MULT if crit else 1.0), 0.0, 0.0, display_name())
 		game.fx.line(_jagged(PackedVector2Array([pos + Vector2(randf_range(-60, 60), -520), pos])), Balance.TAG_COLORS.CHAIN, 0.2, 3.0)
 		game.fx.ring(pos.x, pos.y, blast, Balance.TAG_COLORS.CHAIN, 0.25)
 		if crit and int(s.bounces) > 0:

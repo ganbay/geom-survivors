@@ -153,8 +153,11 @@ func update(delta: float) -> void:
 			var ty := ppos.y - y[i]
 			var td := sqrt(tx * tx + ty * ty) + 0.001
 			var pull := life[i]  # for boomerangs, life holds the pull-back acceleration
+			var outbound := vx[i] * tx + vy[i] * ty < 0.0
 			vx[i] += tx / td * pull * delta
 			vy[i] += ty / td * pull * delta
+			if outbound and vx[i] * tx + vy[i] * ty >= 0.0:
+				clear_hits(i)  # turned around: the return pass can hit the same enemies again
 			if age[i] > 0.3 and td < 26.0:
 				if bounce[i] > 0:
 					bounce[i] -= 1
@@ -191,11 +194,19 @@ func update(delta: float) -> void:
 			_vortex_pull(i, delta)
 		if f & F_GEMS:
 			game.gems.magnetize_near(x[i], y[i], rad[i] + 30.0)
-		x[i] += vx[i] * delta
-		y[i] += vy[i] * delta
+		var step_x := vx[i] * delta
+		var step_y := vy[i] * delta
+		x[i] += step_x
+		y[i] += step_y
 		if not remove:
 			var explode := false
-			var c := en.query(x[i], y[i], rad[i])
+			# fast bullets would tunnel through small enemies: test a circle around the whole step instead
+			var step := sqrt(step_x * step_x + step_y * step_y)
+			var c: int
+			if step > rad[i] + 7.0:
+				c = en.query(x[i] - step_x * 0.5, y[i] - step_y * 0.5, rad[i] + step * 0.5)
+			else:
+				c = en.query(x[i], y[i], rad[i])
 			for q in c:
 				var j := en.qbuf[q]
 				var u := en.uid[j]
@@ -257,7 +268,7 @@ func _fractal_split(i: int) -> void:
 	if child_flags & F_CHILD_CRIT:
 		child_flags |= F_CRIT
 	for s in [-0.6, 0.0, 0.6]:
-		var c := spawn(x[i], y[i], cos(a + s) * sp, sin(a + s) * sp, life[i] * 0.6, dmg[i] * 0.6, Kind.FRACTAL, src[i],
+		var c := spawn(x[i], y[i], cos(a + s) * sp, sin(a + s) * sp, life[i] * 0.6, dmg[i] * 0.7, Kind.FRACTAL, src[i],
 				0, child_flags, scl[i] * 0.72, knock[i] * 0.5)
 		depth[c] = depth[i] - 1
 		for k in HIT_MEM:

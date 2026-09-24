@@ -85,40 +85,40 @@ const WEAPONS := {
 	"vertex_shot": {
 		"name": "Vertex Shot", "tags": ["VERTEX"],
 		"desc": "Fires triangles at the nearest enemies.",
-		"base": {"damage": 10.0, "cooldown": 0.85, "count": 1, "speed": 560.0, "pierce": 0, "area": 1.0, "duration": 1.1, "knockback": 60.0},
+		"base": {"damage": 10.0, "cooldown": 0.7, "count": 1, "speed": 560.0, "pierce": 1, "area": 1.0, "duration": 1.1, "knockback": 60.0},
 		"levels": [{"count": 1}, {"damage": 4.0}, {"cooldown": -0.12}, {"count": 1, "pierce": 1}, {"damage": 6.0, "count": 1}],
 		"evolutions": {
-			"sides": {"name": "Star Burst", "desc": "Every volley also fires a ring of triangles in all directions."},
-			"velocity": {"name": "Railgun", "desc": "All shots fuse into one huge bolt: infinite pierce, x2.2 speed, x1.5 damage per projectile. Fires slower."},
+			"sides": {"name": "Star Burst", "desc": "Double projectile count, bonus projectiles included."},
+			"velocity": {"name": "Railgun", "desc": "Bigger shots that pierce everything, fly x2.2 faster and deal 60% more damage."},
 			"entropy": {"name": "Ricochet", "desc": "Shots bounce to a new enemy on every hit. 2 bounces, +1 per crit."},
 		},
 	},
 	"orbitals": {
 		"name": "Orbitals", "tags": ["ORBIT"],
 		"desc": "Circles orbit you, hitting whatever they touch.",
-		"base": {"damage": 8.0, "cooldown": 0.3, "count": 2, "speed": 2.6, "area": 1.0, "knockback": 90.0},
+		"base": {"damage": 11.0, "cooldown": 0.3, "count": 2, "speed": 2.6, "area": 1.0, "knockback": 90.0},
 		"levels": [{"count": 1}, {"damage": 4.0, "area": 0.15}, {"count": 1}, {"damage": 5.0, "speed": 0.5}, {"count": 1, "area": 0.2}],
 		"evolutions": {
 			"velocity": {"name": "Saturn", "desc": "Adds a larger outer ring spinning the other way. All orbiters grow and spin faster."},
-			"radius": {"name": "Event Horizon", "desc": "Ring grows 50% wider and gravity drags nearby enemies into it."},
+			"radius": {"name": "Event Horizon", "desc": "Ring grows 25% wider with bigger orbiters that hit 25% harder, and gravity drags nearby enemies into it."},
 			"hull": {"name": "Aegis", "desc": "Tight ring that destroys enemy bullets (each block heals 0.5 HP). +50% damage, double knockback."},
 		},
 	},
 	"pulse_ring": {
 		"name": "Pulse Ring", "tags": ["PULSE"],
 		"desc": "Emits an expanding ring that damages everything it crosses.",
-		"base": {"damage": 12.0, "cooldown": 2.2, "count": 1, "area": 1.0, "knockback": 160.0},
+		"base": {"damage": 12.0, "cooldown": 2.2, "count": 1, "speed": 1.0, "area": 1.0, "knockback": 160.0},
 		"levels": [{"damage": 5.0}, {"area": 0.2}, {"cooldown": -0.35}, {"damage": 8.0, "area": 0.15}, {"count": 1}],
 		"evolutions": {
 			"radius": {"name": "Shockwave", "desc": "Rings slow enemies by 50% for 2s and deal 50% more damage."},
-			"frequency": {"name": "Metronome", "desc": "Small, rapid pulses. Every 4th beat is a big ring that hits twice as hard."},
+			"frequency": {"name": "Metronome", "desc": "Rapid pulses at 40% strength. Every 4th beat is a big ring that hits 2.2x as hard."},
 			"magnet": {"name": "Implosion", "desc": "Rings collapse inward from the edge, dragging enemies and all XP inside toward you."},
 		},
 	},
 	"line_laser": {
 		"name": "Line Laser", "tags": ["VERTEX", "PULSE"],
 		"desc": "Fires a piercing beam at the closest enemy. Extra beams hit random nearby foes.",
-		"base": {"damage": 16.0, "cooldown": 1.6, "count": 1, "area": 1.0, "duration": 1.0, "knockback": 30.0},
+		"base": {"damage": 30.0, "cooldown": 1.2, "count": 1, "area": 1.0, "knockback": 30.0},
 		"levels": [{"damage": 8.0}, {"cooldown": -0.25}, {"area": 0.3}, {"count": 1}, {"damage": 14.0}],
 		"evolutions": {
 			"density": {"name": "Prism", "desc": "Each beam splits into a fan of three."},
@@ -129,11 +129,11 @@ const WEAPONS := {
 	"chain_arc": {
 		"name": "Chain Arc", "tags": ["CHAIN"],
 		"desc": "A spark jumps between nearby enemies.",
-		"base": {"damage": 9.0, "cooldown": 1.3, "count": 1, "bounces": 3, "area": 1.0, "knockback": 20.0},
+		"base": {"damage": 9.0, "cooldown": 1.3, "count": 1, "bounces": 2, "area": 1.0, "knockback": 20.0},
 		"levels": [{"bounces": 2}, {"damage": 5.0}, {"count": 1}, {"bounces": 2, "cooldown": -0.2}, {"damage": 8.0, "count": 1}],
 		"evolutions": {
-			"frequency": {"name": "Tesla Grid", "desc": "No damage falloff, double jump range, fires 30% faster."},
-			"entropy": {"name": "Thunderstorm", "desc": "Lightning strikes random enemies across the screen, each with a small blast."},
+			"frequency": {"name": "Tesla Grid", "desc": "No damage falloff, double jump range, fires 25% faster."},
+			"entropy": {"name": "Thunderstorm", "desc": "Lightning strikes the enemies closest to you, each with a small blast."},
 			"hull": {"name": "Static Skin", "desc": "Shocks every enemy near you at once, and discharges whenever you get hit."},
 		},
 	},
@@ -144,30 +144,30 @@ const WEAPONS := {
 		"levels": [{"damage": 6.0}, {"count": 1}, {"area": 0.25}, {"damage": 8.0, "cooldown": -0.25}, {"count": 1}],
 		"evolutions": {
 			"magnet": {"name": "Möbius", "desc": "40% larger, flies out a second time and collects XP it passes."},
-			"velocity": {"name": "Ricochet Blade", "desc": "Rhombuses no longer return: they bounce off the screen edges for 3.5s."},
+			"velocity": {"name": "Ricochet Blade", "desc": "Rhombuses no longer return: they ricochet between enemies up to 8 times and bounce off the screen edges for 3.5s."},
 			"density": {"name": "Guillotine", "desc": "One giant, slow blade that grinds whatever it touches many times."},
 		},
 	},
 	"mines": {
-		"name": "Square Mines", "tags": ["PULSE", "FRACTURE"],
-		"desc": "Drops mines that explode when an enemy comes near.",
-		"base": {"damage": 30.0, "cooldown": 1.5, "count": 1, "area": 1.0, "duration": 8.0, "knockback": 200.0},
+		"name": "Square Grenades", "tags": ["PULSE", "FRACTURE"],
+		"desc": "Lobs grenades at enemies that explode where they land.",
+		"base": {"damage": 30.0, "cooldown": 1.3, "count": 1, "area": 1.0, "duration": 8.0, "knockback": 200.0},
 		"levels": [{"damage": 12.0}, {"count": 1}, {"area": 0.25}, {"cooldown": -0.3, "damage": 12.0}, {"count": 1, "area": 0.2}],
 		"evolutions": {
-			"hull": {"name": "Fortress", "desc": "Mines become turrets that shoot nearby enemies for 6s."},
-			"density": {"name": "Singularity", "desc": "Drops one black-hole mine: it pulls enemies in, then detonates for massive damage."},
-			"sides": {"name": "Minefield", "desc": "Leave a trail of small mines while moving. Explosions set off nearby mines."},
+			"hull": {"name": "Fortress", "desc": "Grenades land as turrets that shoot nearby enemies for 6s."},
+			"density": {"name": "Singularity", "desc": "Throws one black-hole grenade: it pulls enemies in, then detonates for massive damage."},
+			"sides": {"name": "Minefield", "desc": "Stop throwing: leave a trail of small mines while moving instead. Explosions set off nearby mines."},
 		},
 	},
 	"fractal": {
 		"name": "Fractal Shot", "tags": ["VERTEX", "FRACTURE"],
 		"desc": "A slow shot that splits into three smaller shots when it hits.",
-		"base": {"damage": 14.0, "cooldown": 1.4, "count": 1, "speed": 340.0, "pierce": 0, "area": 1.0, "duration": 1.6, "bounces": 1, "knockback": 50.0},
+		"base": {"damage": 18.0, "cooldown": 1.4, "count": 1, "speed": 340.0, "pierce": 0, "area": 1.0, "duration": 1.6, "bounces": 1, "knockback": 50.0},
 		"levels": [{"damage": 6.0}, {"bounces": 1}, {"count": 1}, {"damage": 8.0, "cooldown": -0.2}, {"bounces": 1}],
 		"evolutions": {
-			"entropy": {"name": "Mandelbrot", "desc": "Splits one extra time and every split shot is a guaranteed crit."},
+			"entropy": {"name": "Mandelbrot", "desc": "Splits one extra time, hits 50% harder, and every shot, splits included, is a guaranteed crit."},
 			"radius": {"name": "Supernova", "desc": "The shot swells as it flies, then explodes in a big blast that scatters fragments."},
-			"magnet": {"name": "Attractor", "desc": "A slow homing vortex that pulls enemies into it, then splits."},
+			"magnet": {"name": "Attractor", "desc": "A homing vortex that pulls enemies into it, grinds them, then splits."},
 		},
 	},
 }
@@ -176,7 +176,7 @@ const WEAPON_MAX_LEVEL := 6
 # ---------------------------------------------------------------- passives
 # `per_level` is added once per level.
 const PASSIVES := {
-	"sides":     {"name": "Sides",     "tags": ["VERTEX"],   "max": 2, "per_level": {"count": 1},       "desc": "+1 projectile / orbiter / spark for every weapon."},
+	"sides":     {"name": "Sides",     "tags": ["VERTEX"],   "max": 2, "per_level": {"count": 1},       "desc": "+1 projectile / orbiter / spark for every weapon except Pulse Ring."},
 	"radius":    {"name": "Radius",    "tags": ["PULSE"],    "max": 5, "per_level": {"area": 0.10},     "desc": "+10% area."},
 	"frequency": {"name": "Frequency", "tags": ["CHAIN"],    "max": 5, "per_level": {"cooldown": -0.07},"desc": "-7% cooldown."},
 	"velocity":  {"name": "Velocity",  "tags": ["ORBIT"],    "max": 5, "per_level": {"speed": 0.10, "duration": 0.10}, "desc": "+10% projectile speed and duration."},
@@ -208,7 +208,7 @@ const OVERCLOCKS := {
 	"anchor":   {"name": "Anchor",         "desc": "+60% damage while standing still.", "cost": "-10% move speed.",   "mods": {"anchor": 0.60, "move": -0.10}},
 	"momentum": {"name": "Momentum",       "desc": "+25% move speed.",             "cost": "-15% damage.",                "mods": {"move": 0.25, "damage": -0.15}},
 	"vampire":  {"name": "Siphon",         "desc": "Kills heal 0.4 HP.",           "cost": "No more heal drops or regen.", "mods": {"lifesteal": 0.4, "no_heal": 1}},
-	"trigger":  {"name": "Hair Trigger",   "desc": "+1 projectile / orbiter / spark for every weapon.", "cost": "-20% damage.", "mods": {"count": 1, "damage": -0.20}},
+	"trigger":  {"name": "Hair Trigger",   "desc": "+1 projectile / orbiter / spark for every weapon except Pulse Ring.", "cost": "-20% damage.", "mods": {"count": 1, "damage": -0.20}},
 	"focus":    {"name": "Focus Lens",     "desc": "+20% crit chance.",            "cost": "-15% area.",                  "mods": {"crit": 0.20, "area": -0.15}},
 	"redline":  {"name": "Redline",        "desc": "+60% damage below 50% HP.",    "cost": "All healing is halved.",      "mods": {"redline": 0.60, "heal_mult": -0.5}},
 	"bulwark":  {"name": "Bulwark",        "desc": "+4 armor, +30 max HP.",        "cost": "+20% cooldown.",              "mods": {"armor": 4.0, "max_hp": 30.0, "cooldown": 0.20}},
