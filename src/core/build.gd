@@ -180,6 +180,8 @@ func apply_mods(w: Weapon, st: Dictionary) -> void:
 		st.bounces += 2
 	if w.id == "fractal":
 		st.pierce = 0  # fractal splits instead of piercing
+	if w.id == "pulse_ring":
+		st.count -= extra_count  # rings only come from its own level-ups
 
 
 func vertex_flags() -> int:

@@ -1,6 +1,6 @@
 extends Weapon
 ## Circles orbit the player and hit what they touch; each enemy can be hit again after `cooldown` seconds.
-## Evolutions: velocity = Saturn (second ring) · radius = Event Horizon (wide ring + gravity)
+## Evolutions: velocity = Saturn (second ring) · radius = Event Horizon (wider ring, bigger orbiters + gravity)
 ##             hull = Aegis (tight ring that eats enemy bullets and heals).
 ## ORBIT resonance tier 2: every orbiter shoots a spark once per second.
 
@@ -21,8 +21,8 @@ func update(delta: float) -> void:
 	var kb: float = s.knockback
 	match evo:
 		"radius":
-			r_orbit *= 1.5
-			r_ball *= 1.35
+			r_orbit *= 1.25
+			r_ball *= 1.6
 		"velocity":
 			r_ball *= 1.3
 		"hull":
@@ -41,7 +41,7 @@ func update(delta: float) -> void:
 	if evo == "radius":
 		_gravity(p, r_orbit, delta)
 	var now := game.time
-	var d := dmg() * (1.5 if evo == "hull" else 1.0)
+	var d: float = dmg() * {"hull": 1.5, "radius": 1.25}.get(evo, 1.0)
 	var cd: float = maxf(s.cooldown, 0.12)
 	for pos in positions:
 		var c := en.query(pos.x, pos.y, r_ball)
@@ -89,7 +89,7 @@ func _gravity(p: Vector2, r_orbit: float, delta: float) -> void:
 		var d := sqrt(ox * ox + oy * oy) + 0.001
 		# pull toward the ring radius (from outside inward, from inside outward)
 		var toward := -signf(d - r_orbit)
-		var pull := 700.0 * delta / en.t_mass[en.typ[j]]
+		var pull := 1000.0 * delta / en.t_mass[en.typ[j]]
 		en.kx[j] += ox / d * pull * toward
 		en.ky[j] += oy / d * pull * toward
 
@@ -101,7 +101,7 @@ func draw(ci: CanvasItem) -> void:
 			col = Color(0.6, 0.75, 1.0)
 		"radius":
 			col = Color(0.7, 0.55, 1.0)
-			Shapes.draw_neon_ring(ci, game.player.position, 88.0 * s.area * 1.5, Color(col, 0.15), 1.5, 48)
+			Shapes.draw_neon_ring(ci, game.player.position, 88.0 * s.area * 1.25, Color(col, 0.15), 1.5, 48)
 		"hull":
 			col = Color(0.8, 1.0, 1.0)
 	for pos in positions:

@@ -32,7 +32,7 @@ func fire() -> void:
 		return
 	var p := game.player.position
 	var count := int(s.count)
-	var length: float = 480.0 * s.area
+	var length := 480.0
 	var angles: Array[float] = []
 	for a in _aim_angles(p, count, length):
 		if evo == "density":
@@ -100,10 +100,10 @@ func _lighthouse(delta: float) -> void:
 	tick = 0.1
 	var p := game.player.position
 	var count := int(s.count)
-	var d := dmg() * 0.4
+	var d := dmg() * 0.7
 	for k in count:
 		var a := sweep + TAU * k / count
-		_beam_hit(p, Vector2(cos(a), sin(a)), 400.0 * s.area, 9.0 * s.area, d)
+		_beam_hit(p, Vector2(cos(a), sin(a)), 400.0, 9.0 * s.area, d)
 
 
 ## Polygon Cage: a laser polygon follows the player and burns enemies touching its edges.
@@ -122,7 +122,7 @@ func _cage(delta: float) -> void:
 	var r: float = 175.0 * s.area
 	var c := en.query(p.x, p.y, r + 40.0)
 	var width: float = 10.0 * s.area
-	var d := dmg() * 0.55
+	var d := dmg() * 0.7
 	var targets := en.qbuf.slice(0, c)
 	for j in targets:
 		var e := Vector2(en.px[j], en.py[j])
@@ -148,7 +148,7 @@ func draw(ci: CanvasItem) -> void:
 			var p := game.player.position
 			for k in int(s.count):
 				var a := sweep + TAU * k / int(s.count)
-				Shapes.draw_neon_line(ci, p, p + Vector2(cos(a), sin(a)) * 400.0 * s.area, Color(0.6, 1.0, 1.0, 0.8), 5.0 * s.area)
+				Shapes.draw_neon_line(ci, p, p + Vector2(cos(a), sin(a)) * 400.0, Color(0.6, 1.0, 1.0, 0.8), 5.0 * s.area)
 		"sides":
 			if cage_t > 0.0:
 				var f := minf(cage_t / 0.3, 1.0)

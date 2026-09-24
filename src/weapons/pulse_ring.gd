@@ -18,14 +18,14 @@ func fire() -> void:
 			mult = 1.5
 		"frequency":
 			beat += 1
-			timer = s.cooldown * 0.6
+			timer = s.cooldown * 0.45
 			if beat % 4 == 0:
-				max_r *= 1.5
-				mult = 2.0
+				max_r *= 1.6
+				mult = 2.2
 				game.fx.shake(5.0)
 			else:
-				max_r *= 0.6
-				mult = 0.25
+				max_r *= 0.75
+				mult = 0.4
 		"magnet":
 			mult = 1.8
 			game.gems.magnetize_near(game.player.position.x, game.player.position.y, max_r * 1.2)
@@ -47,7 +47,7 @@ func update(delta: float) -> void:
 			ring[3] -= delta
 			continue
 		var max_r: float = ring[1]
-		var speed := max_r / 0.42
+		var speed: float = max_r / 0.42 * s.speed
 		var d := dmg() * float(ring[4])
 		var hit_set: Dictionary = ring[2]
 		var done := false

@@ -32,6 +32,8 @@ godot --headless --fixed-fps 60 res://tests/autoplay.tscn -- evo=orbitals:radius
 godot --headless --fixed-fps 60 res://tests/autoplay.tscn -- boss=boss_prism bossnow=1 god=1 seconds=60
 ```
 
+Balance tests: `bench=real start=360` plays a realistic run from 6:00 with one evolved weapon. `bench=mob|single|crowd|clear` measure raw damage and clear speed. See the top of `tests/autoplay.gd` and `NOTES.md`.
+
 The bot never writes to the player's save file.
 
 ## Android

@@ -1,13 +1,18 @@
 extends Weapon
-## Drops mines that explode when enemies come close.
-## Evolutions: hull = Fortress (mines become turrets) · density = Singularity (one black-hole mine)
-##             sides = Minefield (trail of small chain-reacting mines while moving).
+## Lobs grenades at the nearest enemies; they explode where they land.
+## Evolutions: hull = Fortress (grenades land as turrets) · density = Singularity (black-hole grenade)
+##             sides = Minefield (no throwing: trail of small chain-reacting mines while moving).
 
 const ARM_TIME := 0.5
 const TRIGGER_R := 26.0
 const PULL_TIME := 0.7
+const FLIGHT_TIME := 0.45
+const THROW_RANGE := 420.0
+const ARC_HEIGHT := 60.0
 
-# each mine: {pos, age, fuse (-1 = idle), shot (turret timer)}
+# grenades in the air: {from, to, t}
+var grenades: Array = []
+# things on the ground: {pos, age, fuse (-1 = idle), shot (turret timer)}
 var mines: Array = []
 var trail_t := 0.0
 
@@ -15,29 +20,54 @@ var trail_t := 0.0
 func max_mines() -> int:
 	match evo:
 		"sides": return 26
-		"hull": return 6 + int(s.count)
-		"density": return 3
-	return 14
+		"hull": return 4 + int(s.count)
+	return 6
 
 
 func fire() -> void:
 	if evo == "sides":
 		return  # Minefield drops mines from update() while moving
+	var throws := 1 if evo == "density" else int(s.count)
+	var targets := game.enemies.nearest_to_player(throws, THROW_RANGE)
+	if targets.is_empty():
+		timer = 0.2  # retry soon instead of wasting the cooldown
+		return
 	var p := game.player.position
-	var drops := 1 if evo == "density" else int(s.count)
-	for k in drops:
-		var a := randf() * TAU
-		_place(p + Vector2(cos(a), sin(a)) * randf_range(20.0, 60.0))
+	for k in throws:
+		var j := targets[k % targets.size()]
+		var to := Vector2(game.enemies.px[j], game.enemies.py[j])
+		if k >= targets.size():
+			to += Vector2.from_angle(randf() * TAU) * 50.0
+		grenades.append({"from": p, "to": to, "t": 0.0})
+	Sfx.play("shoot", 0.5)
 
 
-func _place(pos: Vector2) -> void:
-	mines.append({"pos": pos, "age": 0.0, "fuse": -1.0, "shot": 0.3})
+func _place(pos: Vector2) -> Dictionary:
+	var m := {"pos": pos, "age": 0.0, "fuse": -1.0, "shot": 0.3}
+	mines.append(m)
 	if mines.size() > max_mines():
 		mines.pop_front()
+	return m
+
+
+func _land(pos: Vector2) -> void:
+	match evo:
+		"hull":
+			_place(pos)
+		"density":
+			_place(pos).fuse = PULL_TIME
+		_:
+			_explode(pos)
 
 
 func update(delta: float) -> void:
 	super.update(delta)
+	for k in range(grenades.size() - 1, -1, -1):
+		var g: Dictionary = grenades[k]
+		g.t += delta
+		if g.t >= FLIGHT_TIME:
+			grenades.remove_at(k)
+			_land(g.to)
 	if evo == "sides" and not game.player.is_still():
 		trail_t -= delta
 		if trail_t <= 0.0:
@@ -67,11 +97,8 @@ func update(delta: float) -> void:
 				mines.remove_at(k)
 				_explode(pos)
 		elif m.age >= ARM_TIME and en.query(pos.x, pos.y, TRIGGER_R) > 0:
-			if evo == "density":
-				m.fuse = PULL_TIME
-			else:
-				mines.remove_at(k)
-				_explode(pos)
+			mines.remove_at(k)
+			_explode(pos)
 		k -= 1
 
 
@@ -108,7 +135,7 @@ func _explode(pos: Vector2) -> void:
 	Sfx.play("boom", 0.6 if evo == "density" else 1.0)
 
 
-## Singularity: drag enemies toward the mine before it detonates.
+## Singularity: drag enemies toward the black hole before it detonates.
 func _pull(pos: Vector2, delta: float) -> void:
 	var en := game.enemies
 	var c := en.query(pos.x, pos.y, 230.0 * s.area)
@@ -124,7 +151,7 @@ func _pull(pos: Vector2, delta: float) -> void:
 		en.ky[j] += oy / dist * pull
 
 
-## Fortress: the mine shoots at the nearest enemy.
+## Fortress: the turret shoots at the nearest enemy.
 func _turret(m: Dictionary, delta: float) -> void:
 	m.shot -= delta
 	if m.shot > 0.0:
@@ -135,11 +162,16 @@ func _turret(m: Dictionary, delta: float) -> void:
 	if j < 0:
 		return
 	var dir := Vector2(game.enemies.px[j] - pos.x, game.enemies.py[j] - pos.y).normalized()
-	game.bullets.spawn(pos.x, pos.y, dir.x * 540.0, dir.y * 540.0, 0.7, dmg() * 0.8, Bullets.Kind.TRI, src, 0, 0, 0.8, 30.0)
+	game.bullets.spawn(pos.x, pos.y, dir.x * 540.0, dir.y * 540.0, 0.7, dmg() * 0.7, Bullets.Kind.TRI, src, 0, 0, 0.8, 30.0)
 	m.aim = dir
 
 
 func draw(ci: CanvasItem) -> void:
+	for g in grenades:
+		var f: float = g.t / FLIGHT_TIME
+		var pos: Vector2 = (g.from as Vector2).lerp(g.to, f) + Vector2(0.0, -sin(PI * f) * ARC_HEIGHT)
+		var col := Color(0.7, 0.55, 1.0) if evo == "density" else Color(0.4, 1.0, 0.8)
+		Shapes.draw_neon_poly(ci, Transform2D(0.0, pos) * Shapes.points(4, 8.0, g.t * 12.0), col, 2.0, 0.3)
 	for m in mines:
 		var pos: Vector2 = m.pos
 		var armed: bool = m.age >= ARM_TIME
@@ -158,10 +190,10 @@ func draw(ci: CanvasItem) -> void:
 					Shapes.draw_neon_ring(ci, pos, 230.0 * s.area * f, Color(col, 0.6), 2.0, 40)
 			_:
 				var col := Color(0.4, 1.0, 0.8) if armed else Color(0.4, 1.0, 0.8, 0.4)
-				var size := 6.0 if evo == "sides" else 9.0
 				var blink := 1.0 if not armed or fmod(m.age, 0.8) > 0.12 else 1.8
-				Shapes.draw_neon_poly(ci, Transform2D(0.0, pos) * Shapes.points(4, size * blink, PI / 4.0), col, 2.0, 0.2)
+				Shapes.draw_neon_poly(ci, Transform2D(0.0, pos) * Shapes.points(4, 6.0 * blink, PI / 4.0), col, 2.0, 0.2)
 
 
 func clear() -> void:
+	grenades.clear()
 	mines.clear()

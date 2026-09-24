@@ -106,7 +106,7 @@ static func _count_word(weapon_id: String) -> String:
 		"line_laser": return "beam"
 		"chain_arc": return "spark"
 		"boomerang": return "rhombus"
-		"mines": return "mine"
+		"mines": return "grenade"
 	return "projectile"
 
 

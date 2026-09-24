@@ -1,6 +1,6 @@
 extends Weapon
 ## Rhombuses fly out toward enemies and get pulled back, piercing everything.
-## Evolutions: magnet = Möbius (larger, flies out twice, collects XP) · velocity = Ricochet Blade (bounces off screen edges)
+## Evolutions: magnet = Möbius (larger, flies out twice, collects XP) · velocity = Ricochet Blade (enemy-to-enemy and screen-edge bounces)
 ##             density = Guillotine (one giant grinding blade).
 
 
@@ -21,8 +21,9 @@ func fire() -> void:
 		var dir := _aim(p, k, count)
 		match evo:
 			"velocity":
-				game.bullets.spawn(p.x, p.y, dir.x * sp * 1.4, dir.y * sp * 1.4, 3.5, dmg() * 0.6, Bullets.Kind.RHOMBUS, src,
-						0, Bullets.F_SCREEN | game.build.vertex_flags(), s.area, s.knockback)
+				var i := game.bullets.spawn(p.x, p.y, dir.x * sp * 1.4, dir.y * sp * 1.4, 3.5, dmg() * 1.4, Bullets.Kind.RHOMBUS, src,
+						0, Bullets.F_SCREEN | Bullets.F_RICOCHET | game.build.vertex_flags(), s.area, s.knockback)
+				game.bullets.bounce[i] = 8
 			"magnet":
 				var i := game.bullets.spawn(p.x, p.y, dir.x * sp, dir.y * sp, sp / s.duration, dmg(), Bullets.Kind.RHOMBUS, src,
 						0, flags | Bullets.F_GEMS, s.area * 1.4, s.knockback)
