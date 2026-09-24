@@ -45,6 +45,14 @@ var anchor := 0.0
 var lifesteal := 0.0
 var no_heal := false
 var enemy_hp_bonus := 0.0
+var enemy_speed_bonus := 0.0
+var enemy_damage_bonus := 0.0
+var redline := 0.0
+var heal_mult := 1.0
+var resonance_bonus := 0
+var volatile := 0.0
+var has_revive := false
+var revive_used := false
 var tag_counts := {}
 var tiers := {}
 
@@ -101,13 +109,20 @@ func recompute() -> void:
 	max_hp = (character.hp + sum.get("max_hp", 0.0)) * (1.0 + sum.get("max_hp_mult", 0.0))
 	regen = 0.0 if sum.has("no_heal") else sum.get("regen", 0.0)
 	move_speed = character.speed * (1.0 + sum.get("move", 0.0))
-	armor = character.armor
+	armor = character.armor + sum.get("armor", 0.0)
 	taken_mult = 1.0 + sum.get("taken", 0.0)
 	offer_count = Balance.OFFER_COUNT + int(sum.get("offers", 0))
 	anchor = sum.get("anchor", 0.0)
 	lifesteal = sum.get("lifesteal", 0.0)
 	no_heal = sum.has("no_heal")
 	enemy_hp_bonus = sum.get("enemy_hp", 0.0)
+	enemy_speed_bonus = sum.get("enemy_speed", 0.0)
+	enemy_damage_bonus = sum.get("enemy_damage", 0.0)
+	redline = sum.get("redline", 0.0)
+	heal_mult = maxf(0.0, 1.0 + sum.get("heal_mult", 0.0))
+	resonance_bonus = int(sum.get("resonance", 0))
+	volatile = sum.get("volatile", 0.0)
+	has_revive = sum.has("revive")
 	var xp_bonus: float = sum.get("xp", 0.0)
 	xp_mult = (1.0 + game.depth_mods.get("xp", 0.0)) * (1.0 + xp_bonus)
 	tag_counts = count_tags()
@@ -138,6 +153,9 @@ func count_tags(extra_tags: Array = []) -> Dictionary:
 			c[tag] = c.get(tag, 0) + 1
 	for tag in extra_tags:
 		c[tag] = c.get(tag, 0) + 1
+	if resonance_bonus > 0:
+		for tag in c:
+			c[tag] += resonance_bonus
 	return c
 
 
@@ -215,10 +233,15 @@ func _weapon_name(id: String) -> String:
 
 # ------------------------------------------------------------------ level-up offers
 
-## Offer = {kind: "weapon"|"passive"|"overclock"|"heal", id, level (new level), new: bool}
+## Offer = {kind: "weapon"|"passive"|"evolve"|"heal", id, level (new level), new: bool}
+## Level-up offers. Evolutions join the pool once a weapon and its key passive are both maxed.
 func make_offers() -> Array:
 	var pool: Array = []
 	var weights: Array[float] = []
+	for opt in evolution_options():
+		var ew: Weapon = opt.weapon
+		pool.append({"kind": "evolve", "id": ew.id, "passive": opt.passive, "level": ew.level, "new": false})
+		weights.append(Balance.OFFER_W_EVOLUTION)
 	for id in Balance.WEAPONS:
 		if banished.has(id):
 			continue
@@ -257,15 +280,18 @@ func make_offers() -> Array:
 		offers.append(pool[pick])
 		pool.remove_at(pick)
 		weights.remove_at(pick)
-	var oc := available_overclocks()
-	if not oc.is_empty() and randf() < Balance.OVERCLOCK_OFFER_CHANCE:
-		var o := {"kind": "overclock", "id": oc.pick_random(), "level": 1, "new": true}
-		if offers.size() >= count:
-			offers[offers.size() - 1] = o
-		else:
-			offers.append(o)
 	if offers.is_empty():
 		offers.append({"kind": "heal", "id": "heal", "level": 1, "new": false})
+	return offers
+
+
+## Core offers: a few random overclocks. Declining is always possible (see Game).
+func make_overclock_offers() -> Array:
+	var oc := available_overclocks()
+	oc.shuffle()
+	var offers: Array = []
+	for id in oc.slice(0, Balance.OVERCLOCK_CHOICES):
+		offers.append({"kind": "overclock", "id": id, "level": 1, "new": true})
 	return offers
 
 

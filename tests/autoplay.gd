@@ -1,9 +1,10 @@
 extends Node
 ## Headless balance/perf harness. Plays a run with a simple bot.
 ## Usage: godot --headless --fixed-fps 60 res://tests/autoplay.tscn -- char=triangle depth=0 god=1 seconds=900 pick=smart
+## boss=<id> forces every boss event to that boss (and spawns it right away with bossnow=1).
 
 var game: Game
-var args := {"char": "triangle", "depth": "0", "god": "0", "seconds": "900", "pick": "smart", "seed": "1", "shots": "", "out": "", "pause_at": "-1", "evo": "", "start": "0", "stand": "0", "name": "", "core": "0"}
+var args := {"char": "triangle", "depth": "0", "god": "0", "seconds": "900", "pick": "smart", "seed": "1", "shots": "", "out": "", "pause_at": "-1", "evo": "", "start": "0", "stand": "0", "name": "", "core": "0", "boss": "", "bossnow": "0"}
 var over_wait := 0
 var pause_wait := 0
 var shots: Array[float] = []
@@ -14,6 +15,7 @@ var frames := 0
 var worst_us := 0
 var next_report := 30.0
 var start_ms := 0
+var boss_seen := ""
 
 
 func _ready() -> void:
@@ -32,6 +34,10 @@ func _ready() -> void:
 	game.god_mode = args.god == "1"
 	add_child(game)
 	start_ms = Time.get_ticks_msec()
+	if args.boss != "":
+		game.director.boss_override = args.boss
+		if args.bossnow == "1":
+			game.director._run_event({"kind": "boss", "pool": [args.boss]})
 	if args.evo != "":
 		_force_evolution(args.evo)
 	if float(args.start) > 0.0:
@@ -68,6 +74,12 @@ func _force_evolution(spec: String) -> void:
 			b.passives[pid] = Balance.PASSIVES[pid].max
 		b.recompute()
 		game.pending_cores = 1
+	elif args.core == "2":
+		# evolutions ready: they should show up in the level-up pool
+		for pid in w.data.evolutions:
+			b.passives[pid] = Balance.PASSIVES[pid].max
+		b.recompute()
+		game.pending_levels = 1
 
 
 func _process(_delta: float) -> void:
@@ -84,7 +96,7 @@ func _process(_delta: float) -> void:
 		game.open_pause()
 		return
 	if game.state == Game.State.CHOOSING:
-		if args.out != "" and not levelup_shot_taken and (game.level >= 3 or args.core == "1"):
+		if args.out != "" and not levelup_shot_taken and (game.level >= 3 or args.core != "0"):
 			choose_wait += 1
 			if choose_wait < 4:
 				return
@@ -145,6 +157,11 @@ func _process(_delta: float) -> void:
 	if args.stand == "1":
 		game.joystick.output = Vector2.ZERO
 	frames += 1
+	var bi := game.enemies.boss_idx
+	var boss_now := game.enemies.type_ids[game.enemies.typ[bi]] if bi >= 0 else ""
+	if boss_now != boss_seen:
+		print("[boss] t=%s %s -> %s" % [UI.fmt_time(game.time), boss_seen, boss_now])
+		boss_seen = boss_now
 	if game.time >= next_report:
 		next_report += 30.0
 		_report("t")
@@ -168,7 +185,8 @@ func _pick() -> void:
 				"evolve": score += 100.0 + randf()
 				"weapon": score += 5.0 if not o.new else 3.0
 				"passive": score += 2.5 if not o.new else 2.0
-				"overclock": score += 1.0
+				"overclock": score += 1.5
+				"bonus": score += 1.0
 			if score > best:
 				best = score
 				pick = o

@@ -28,14 +28,14 @@ func _resize(c: int) -> void:
 		set(arr, a)
 
 
-func spawn(px: float, py: float, pvx: float, pvy: float, p_dmg: float, r: float) -> void:
+func spawn(px: float, py: float, pvx: float, pvy: float, p_dmg: float, r: float, p_life := 4.5) -> void:
 	if n >= x.size():
 		_resize(x.size() * 2)
 	x[n] = px
 	y[n] = py
 	vx[n] = pvx
 	vy[n] = pvy
-	life[n] = 4.5
+	life[n] = p_life
 	dmg[n] = p_dmg
 	rad[n] = r
 	n += 1

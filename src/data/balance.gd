@@ -28,7 +28,7 @@ const TAG_COLORS := {
 
 # ---------------------------------------------------------------- run
 const RUN_LENGTH := 900.0          # final boss spawns at 15:00
-const MAX_WEAPONS := 4
+const MAX_WEAPONS := 3
 const MAX_PASSIVES := 4
 const OFFER_COUNT := 3
 const REROLLS := 2
@@ -39,7 +39,8 @@ const OFFER_W_OWNED_WEAPON := 2.6
 const OFFER_W_OWNED_PASSIVE := 2.0
 const OFFER_W_NEW_WEAPON := 0.6
 const OFFER_W_NEW_PASSIVE := 0.5
-const OVERCLOCK_OFFER_CHANCE := 0.22   # chance that one card is replaced by an Overclock
+const OFFER_W_EVOLUTION := 2.6        # an evolution whose weapon and key passive are both maxed
+const OVERCLOCK_CHOICES := 3           # overclock cards offered by a core (elite / boss drop)
 const CRIT_MULT := 2.0
 const PLAYER_RADIUS := 16.0
 const PLAYER_IFRAMES := 0.5
@@ -197,7 +198,7 @@ const RESONANCE := {
 }
 
 # ---------------------------------------------------------------- overclocks
-# Powerful trade-offs. Each can be taken once per run.
+# Powerful trade-offs, offered only by cores (dropped by elites and bosses). Each can be taken once per run.
 const OVERCLOCKS := {
 	"glass":    {"name": "Glass Core",     "desc": "+40% damage.",                 "cost": "-30% max HP.",                "mods": {"damage": 0.40, "max_hp_mult": -0.30}},
 	"heavy":    {"name": "Heavy Field",    "desc": "+35% area.",                   "cost": "-12% move speed.",            "mods": {"area": 0.35, "move": -0.12}},
@@ -207,7 +208,17 @@ const OVERCLOCKS := {
 	"anchor":   {"name": "Anchor",         "desc": "+60% damage while standing still.", "cost": "-10% move speed.",   "mods": {"anchor": 0.60, "move": -0.10}},
 	"momentum": {"name": "Momentum",       "desc": "+25% move speed.",             "cost": "-15% damage.",                "mods": {"move": 0.25, "damage": -0.15}},
 	"vampire":  {"name": "Siphon",         "desc": "Kills heal 0.4 HP.",           "cost": "No more heal drops or regen.", "mods": {"lifesteal": 0.4, "no_heal": 1}},
+	"trigger":  {"name": "Hair Trigger",   "desc": "+1 projectile / orbiter / spark for every weapon.", "cost": "-20% damage.", "mods": {"count": 1, "damage": -0.20}},
+	"focus":    {"name": "Focus Lens",     "desc": "+20% crit chance.",            "cost": "-15% area.",                  "mods": {"crit": 0.20, "area": -0.15}},
+	"redline":  {"name": "Redline",        "desc": "+60% damage below 50% HP.",    "cost": "All healing is halved.",      "mods": {"redline": 0.60, "heal_mult": -0.5}},
+	"bulwark":  {"name": "Bulwark",        "desc": "+4 armor, +30 max HP.",        "cost": "+20% cooldown.",              "mods": {"armor": 4.0, "max_hp": 30.0, "cooldown": 0.20}},
+	"resonator":{"name": "Resonator",      "desc": "Every tag you hold counts +1 toward Resonance.", "cost": "-25% XP.",  "mods": {"resonance": 1, "xp": -0.25}},
+	"stasis":   {"name": "Stasis Field",   "desc": "Enemies move 15% slower.",     "cost": "-20% projectile speed and duration.", "mods": {"enemy_speed": -0.15, "speed": -0.20, "duration": -0.20}},
+	"phoenix":  {"name": "Last Stand",     "desc": "Once per run, a lethal hit leaves you at 50% HP instead.", "cost": "-25% max HP.", "mods": {"revive": 1, "max_hp_mult": -0.25}},
+	"volatile": {"name": "Volatile Matter","desc": "Kills have a 25% chance to explode, hurting nearby enemies.", "cost": "Enemies deal +15% damage.", "mods": {"volatile": 0.25, "enemy_damage": 0.15}},
 }
+const VOLATILE_RADIUS := 70.0
+const REVIVE_IFRAMES := 2.0
 
 # ---------------------------------------------------------------- enemies
 # behavior: chase, dash, shoot, split, elite, boss
@@ -221,8 +232,20 @@ const ENEMIES := {
 	"brute":    {"sides": 4, "radius": 22.0, "hp": 70.0,  "speed": 52.0,  "damage": 16.0, "xp": 6, "mass": 3.0, "armor": 5.0, "cap": 0.0,  "color": Color(0.9, 0.2, 0.5),   "behavior": "chase"},
 	"star":     {"sides": -5,"radius": 30.0, "hp": 650.0, "speed": 58.0,  "damage": 20.0, "xp": 30,"mass": 8.0, "armor": 0.0, "cap": 14.0, "color": Color(1.0, 0.3, 0.55),  "behavior": "elite"},
 	"boss_tetra":{"sides": 4, "radius": 52.0, "hp": 3200.0, "speed": 80.0, "damage": 25.0, "xp": 80, "mass": 50.0, "armor": 3.0, "cap": 0.0, "color": Color(1.0, 0.35, 0.2), "behavior": "boss"},
-	"boss_hex": {"sides": 6, "radius": 58.0, "hp": 11000.0,"speed": 65.0, "damage": 30.0, "xp": 150,"mass": 50.0, "armor": 4.0, "cap": 0.0, "color": Color(0.8, 0.35, 1.0), "behavior": "boss"},
+	"boss_penta":{"sides": 5, "radius": 50.0, "hp": 2300.0, "speed": 70.0, "damage": 22.0, "xp": 80, "mass": 50.0, "armor": 3.0, "cap": 0.0, "color": Color(1.0, 0.6, 0.15), "behavior": "boss"},
+	"boss_hex": {"sides": 6, "radius": 58.0, "hp": 11000.0,"speed": 80.0, "damage": 30.0, "xp": 150,"mass": 50.0, "armor": 4.0, "cap": 0.0, "color": Color(0.8, 0.35, 1.0), "behavior": "boss"},
+	"boss_prism":{"sides": 8, "radius": 56.0, "hp": 7000.0,"speed": 60.0, "damage": 30.0, "xp": 150,"mass": 50.0, "armor": 4.0, "cap": 0.0, "color": Color(1.0, 0.3, 0.8), "behavior": "boss"},
 	"boss_final":{"sides": 3, "radius": 70.0, "hp": 38000.0,"speed": 75.0, "damage": 35.0, "xp": 0, "mass": 80.0, "armor": 5.0, "cap": 0.0, "color": Color(1.0, 0.2, 0.45), "behavior": "boss"},
+	"boss_void":{"sides": 0, "radius": 64.0, "hp": 36000.0,"speed": 55.0, "damage": 35.0, "xp": 0, "mass": 80.0, "armor": 5.0, "cap": 0.0, "color": Color(1.0, 0.25, 0.3), "behavior": "boss"},
+}
+# Boss roster. Each boss event picks one of its pool at random. `final` bosses end the run when killed.
+const BOSSES := {
+	"boss_tetra": {"name": "TETRAGON PRIME", "hint": "Chains three charges"},
+	"boss_penta": {"name": "PENTARCH",       "hint": "Artillery: keep moving"},
+	"boss_hex":   {"name": "HEXCORE",        "hint": "Spiral fortress"},
+	"boss_prism": {"name": "OCTAPRISM",      "hint": "Sweeping lasers"},
+	"boss_final": {"name": "THE POLYGON",    "hint": "Grows sides as it breaks", "final": true},
+	"boss_void":  {"name": "THE SINGULARITY","hint": "Gravity pulls you in", "final": true},
 }
 const DARTER_DASH_SPEED := 430.0
 const DARTER_TELEGRAPH := 0.65
@@ -257,21 +280,21 @@ const WAVES := [
 	{"t": 900, "interval": 0.60, "batch": 5, "max": 150, "types": {"dot": 0.5, "shard": 0.5}},
 ]
 
-# One-off events: swarm = ring of enemies around the player, elite = a Star, boss = boss.
+# One-off events: swarm = ring of enemies around the player, elite = a Star, boss = one boss picked from `pool`.
 const EVENTS := [
 	{"t": 90,  "kind": "swarm", "type": "dot", "count": 30},
 	{"t": 150, "kind": "elite", "type": "star"},
 	{"t": 210, "kind": "swarm", "type": "darter", "count": 16},
-	{"t": 300, "kind": "boss",  "type": "boss_tetra"},
+	{"t": 300, "kind": "boss",  "pool": ["boss_tetra", "boss_penta"]},
 	{"t": 380, "kind": "elite", "type": "star"},
 	{"t": 450, "kind": "swarm", "type": "brute", "count": 14},
 	{"t": 500, "kind": "elite", "type": "star"},
-	{"t": 600, "kind": "boss",  "type": "boss_hex"},
+	{"t": 600, "kind": "boss",  "pool": ["boss_hex", "boss_prism"]},
 	{"t": 690, "kind": "swarm", "type": "hexagon", "count": 22},
 	{"t": 720, "kind": "elite", "type": "star"},
 	{"t": 810, "kind": "elite", "type": "star"},
 	{"t": 840, "kind": "swarm", "type": "dot", "count": 60},
-	{"t": 900, "kind": "boss",  "type": "boss_final"},
+	{"t": 900, "kind": "boss",  "pool": ["boss_final", "boss_void"]},
 ]
 
 # ---------------------------------------------------------------- depth (difficulty tiers)

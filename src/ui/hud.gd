@@ -114,7 +114,7 @@ func update(delta: float) -> void:
 	var bi := game.enemies.boss_idx
 	boss_label.visible = bi >= 0
 	if bi >= 0:
-		boss_label.text = Director.BOSS_NAMES.get(game.enemies.type_ids[game.enemies.typ[bi]], "BOSS")
+		boss_label.text = Balance.BOSSES[game.enemies.type_ids[game.enemies.typ[bi]]].name
 	bars.queue_redraw()
 
 

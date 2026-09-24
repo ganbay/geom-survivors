@@ -2,8 +2,6 @@ class_name Director
 extends RefCounted
 ## Spawns enemies over time from Balance.WAVES and Balance.EVENTS.
 
-const BOSS_NAMES := {"boss_tetra": "TETRAGON PRIME", "boss_hex": "HEXCORE", "boss_final": "THE POLYGON"}
-
 var game: Game
 var spawn_timer := 0.5
 var event_idx := 0
@@ -13,6 +11,8 @@ var depth_hp := 0.0
 var boss_hp := 0.0
 var elite_count := 1
 var depth_damage := 1.0
+var depth_speed := 0.0
+var boss_override := ""  # debug / test harness: always spawn this boss
 
 
 func _init(g: Game) -> void:
@@ -21,6 +21,7 @@ func _init(g: Game) -> void:
 	boss_hp = game.depth_mods.get("boss_hp", 0.0)
 	elite_count = 2 if game.depth_mods.has("elite_double") else 1
 	depth_damage = 1.0 + game.depth_mods.get("enemy_damage", 0.0)
+	depth_speed = game.depth_mods.get("enemy_speed", 0.0)
 
 
 func phase() -> Dictionary:
@@ -34,7 +35,8 @@ func phase() -> Dictionary:
 func update(delta: float) -> void:
 	var t := game.time
 	hp_mult = Balance.enemy_hp_mult(t) * (1.0 + depth_hp + game.build.enemy_hp_bonus)
-	game.enemies.damage_mult = depth_damage * Balance.enemy_damage_mult(t)
+	game.enemies.damage_mult = depth_damage * Balance.enemy_damage_mult(t) * (1.0 + game.build.enemy_damage_bonus)
+	game.enemies.speed_mult = maxf(0.3, 1.0 + depth_speed + game.build.enemy_speed_bonus)
 	var ph := phase()
 	spawn_timer -= delta
 	if spawn_timer <= 0.0:
@@ -66,12 +68,13 @@ func _run_event(e: Dictionary) -> void:
 			for k in elite_count:
 				var p := spawn_point(40.0)
 				game.enemies.spawn(e.type, p.x, p.y, hp_mult * 0.5 + 0.5)
-			game.hud.banner("ELITE STAR — DROPS A CORE", Balance.C_GOLD, 2.0)
+			game.hud.banner("ELITE STAR — DROPS AN OVERCLOCK CORE", Balance.C_GOLD, 2.0)
 		"boss":
+			var id: String = boss_override if boss_override != "" else e.pool.pick_random()
 			var p := spawn_point(80.0)
 			var mult := (1.0 + depth_hp) * (1.0 + boss_hp)
-			game.enemies.spawn(e.type, p.x, p.y, mult)
-			game.hud.banner("⚠ " + BOSS_NAMES[e.type], Balance.C_DANGER, 3.0)
+			game.enemies.spawn(id, p.x, p.y, mult)
+			game.hud.banner("⚠ %s\n%s" % [Balance.BOSSES[id].name, Balance.BOSSES[id].hint], Balance.C_DANGER, 3.0)
 			game.fx.shake(8.0)
 			Sfx.play("boss")
 

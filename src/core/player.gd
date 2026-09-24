@@ -59,13 +59,24 @@ func contact(dmg: float) -> void:
 	if Save.get_setting("vibration", true):
 		Input.vibrate_handheld(40)
 	if hp <= 0.0:
+		var b := game.build
+		if b.has_revive and not b.revive_used:
+			# Last Stand overclock
+			b.revive_used = true
+			hp = b.max_hp * 0.5
+			iframes = Balance.REVIVE_IFRAMES
+			game.hostile.destroy_near(position.x, position.y, 220.0)
+			game.fx.ring(position.x, position.y, 220.0, Balance.C_GOLD, 0.6, 5.0)
+			game.hud.banner("LAST STAND", Balance.C_GOLD, 1.5)
+			Sfx.play("heal")
+			return
 		hp = 0.0
 		game.on_player_died()
 
 
 func heal(amount: float) -> void:
 	if hp > 0.0:
-		hp = minf(hp + amount, game.build.max_hp)
+		hp = minf(hp + amount * game.build.heal_mult, game.build.max_hp)
 
 
 func _draw() -> void:

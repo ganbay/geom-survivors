@@ -8,12 +8,12 @@ Open the project in Godot 4.7 and press F5, or run `godot --path .`. Drag anywhe
 
 ## Design at a glance
 
-- 15-minute runs with bosses at 5:00, 10:00 and 15:00.
+- 15-minute runs with bosses at 5:00, 10:00 and 15:00. Each slot picks one of two bosses at random, and each boss has its own attack pattern: Tetragon Prime or Pentarch, then Hexcore or Octaprism, then The Polygon or The Singularity.
 - 3 characters (Triangle, Square, Circle), 8 weapons, 8 passives.
-- 4 weapon slots and 4 passive slots.
+- 3 weapon slots and 4 passive slots.
 - **Resonance:** items carry tags (VERTEX, ORBIT, PULSE, CHAIN, FRACTURE). Holding 2 or 4 items with the same tag unlocks bonuses.
-- **Evolutions:** each weapon has 3 evolutions, each keyed by a different passive, 24 in total. A weapon evolves at a core once both it and its key passive are at max level. Evolving *claims* that passive, so no other weapon can use it.
-- **Overclocks:** optional level-up cards that give a strong bonus in exchange for a permanent drawback.
+- **Evolutions:** each weapon has 3 evolutions, each keyed by a different passive, 24 in total. Once a weapon and its key passive are both at max level, the evolution can show up as a level-up card. Evolving *claims* that passive, so no other weapon can use it.
+- **Overclocks:** 16 strong bonuses, each with a permanent drawback. Elites and bosses drop a core that offers 3 of them; you can also vent the core for a free level-up and a 30% heal.
 - **No permanent power progression.** Winning only unlocks the next Depth (0–10), which adds a stacking difficulty modifier.
 
 ## Tuning and assets
@@ -29,6 +29,7 @@ Open the project in Godot 4.7 and press F5, or run `godot --path .`. Drag anywhe
 ```sh
 godot --headless --fixed-fps 60 res://tests/autoplay.tscn -- char=triangle seed=3 seconds=900
 godot --headless --fixed-fps 60 res://tests/autoplay.tscn -- evo=orbitals:radius start=420 seconds=90 stand=1
+godot --headless --fixed-fps 60 res://tests/autoplay.tscn -- boss=boss_prism bossnow=1 god=1 seconds=60
 ```
 
 The bot never writes to the player's save file.

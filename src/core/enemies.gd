@@ -9,6 +9,17 @@ const CELL := 48.0
 const GW := 48
 const GH := 48
 const BIG_RADIUS := 32.0
+const TETRA_CHARGE_SPEED := 620.0
+const TETRA_CHARGE_TIME := 0.5
+const POLY_CHARGE_SPEED := 540.0
+const POLY_CHARGE_TIME := 0.75
+const PRISM_BEAM_LEN := 900.0
+const PRISM_BEAM_WIDTH := 10.0
+const PRISM_SPIN := 0.55
+const VOID_PULL := 40.0
+const VOID_HORIZON_PULL := 115.0
+const BOSS_LEASH := 420.0
+const BOSS_CATCHUP_SPEED := 270.0
 
 var game: Game
 
@@ -63,6 +74,8 @@ var boss_idx := -1
 var frame := 0
 var speed_mult := 1.0
 var damage_mult := 1.0
+var boss_state := {}   # uid -> Dictionary of per-boss pattern state
+var hazards: Array = []  # boss telegraphs that go off after a delay, see _update_hazards()
 
 
 func setup(g: Game) -> void:
@@ -150,6 +163,7 @@ func update(delta: float) -> void:
 	var recycle_d2 := pow(game.view_radius() + 320.0, 2.0)
 	var decay := exp(-8.0 * delta)
 	boss_idx = -1
+	_update_hazards(delta)
 	for i in n:
 		if dead[i]:
 			continue
@@ -209,6 +223,9 @@ func update(delta: float) -> void:
 			BOSS:
 				boss_idx = i
 				var v := _boss_update(i, delta, ddx / d, ddy / d, d)
+				# leash: a boss left far behind closes the gap fast, so it can't simply be outrun
+				if d > BOSS_LEASH:
+					v = v.lerp(Vector2(ddx, ddy) / d * BOSS_CATCHUP_SPEED * speed_mult, clampf((d - BOSS_LEASH) / 200.0, 0.0, 1.0))
 				vx = v.x
 				vy = v.y
 			_:
@@ -255,71 +272,308 @@ func update(delta: float) -> void:
 	queue_redraw()
 
 
+# ------------------------------------------------------------------ bosses
+# Every boss has its own pattern. Shared per-enemy fields: st = phase, tmr = phase timer,
+# dx/dy = charge direction. Anything else lives in boss_state[uid].
+
+func _bs(i: int) -> Dictionary:
+	var u := uid[i]
+	if not boss_state.has(u):
+		boss_state[u] = {}
+	return boss_state[u]
+
+
 func _boss_update(i: int, delta: float, nx: float, ny: float, d: float) -> Vector2:
-	var id := type_ids[typ[i]]
-	var sp := t_speed[typ[i]] * speed_mult
-	var v := Vector2(nx, ny) * sp
 	tmr[i] -= delta
-	var frac := hp[i] / mhp[i]
-	var sides := t_sides[typ[i]]
-	if id == "boss_final":
-		sides = 3 + int((1.0 - frac) * 6.0)
-		sides = mini(sides, 8)
-		if sides != int(tmr2[i]):
-			if tmr2[i] > 0.0:
-				_bullet_ring(px[i], py[i], sides * 4, 0.0, 1.1)
-				game.fx.shake(10.0)
-				Sfx.play("boss", 0.8)
-			tmr2[i] = sides
-		sp *= 1.0 + (sides - 3) * 0.06
-		v = Vector2(nx, ny) * sp
-	rot[i] += delta * (0.5 + (sides - 3) * 0.15)
-	var dmg := t_damage[typ[i]] * damage_mult * 0.6
+	match type_ids[typ[i]]:
+		"boss_tetra":
+			return _boss_tetra(i, delta, nx, ny)
+		"boss_penta":
+			return _boss_penta(i, delta, nx, ny, d)
+		"boss_hex":
+			return _boss_hex(i, delta, nx, ny)
+		"boss_prism":
+			return _boss_prism(i, delta, nx, ny, d)
+		"boss_void":
+			return _boss_void(i, delta, nx, ny, d)
+	return _boss_polygon(i, delta, nx, ny)
+
+
+func _boss_dmg(i: int) -> float:
+	return t_damage[typ[i]] * damage_mult * 0.6
+
+
+func _boss_speed(i: int) -> float:
+	return t_speed[typ[i]] * speed_mult
+
+
+func _boss_windup(i: int, nx: float, ny: float, wind: float) -> void:
+	st[i] = 1
+	tmr[i] = wind
+	_bs(i).wind = wind
+	dx[i] = nx
+	dy[i] = ny
+
+
+func _boss_summon(i: int, id: String, count: int, dist: float) -> void:
+	for k in count:
+		var a := TAU * k / count + rot[i]
+		spawn(id, px[i] + cos(a) * dist, py[i] + sin(a) * dist, game.director.hp_mult)
+
+
+## TETRAGON PRIME: three charges in a row, each re-aimed with a shorter wind-up, then a slam.
+func _boss_tetra(i: int, delta: float, nx: float, ny: float) -> Vector2:
+	var bs := _bs(i)
+	rot[i] += delta * 0.6
 	match st[i]:
 		0:  # chase
 			if tmr[i] <= 0.0:
+				bs.combo = 0
+				_boss_windup(i, nx, ny, 0.8)
+			return Vector2(nx, ny) * _boss_speed(i)
+		1:  # wind-up
+			if tmr[i] <= 0.0:
+				st[i] = 2
+				tmr[i] = TETRA_CHARGE_TIME
+				Sfx.play("dash", 0.7)
+			return Vector2.ZERO
+		2:  # charge
+			if tmr[i] <= 0.0:
+				bs.combo += 1
+				_bullet_ring(px[i], py[i], 6, rot[i], 0.8)
+				if bs.combo < 3:
+					_boss_windup(i, nx, ny, 0.42)
+				else:
+					st[i] = 3
+					tmr[i] = 0.7
+			return Vector2(dx[i], dy[i]) * TETRA_CHARGE_SPEED * speed_mult
+		_:  # slam
+			if tmr[i] <= 0.0:
+				_bullet_ring(px[i], py[i], 16, rot[i], 1.0)
+				game.fx.ring(px[i], py[i], 170.0, t_color[typ[i]], 0.4, 5.0)
+				game.fx.shake(8.0)
+				_boss_summon(i, "dot", 5, 90.0)
+				st[i] = 0
+				tmr[i] = 2.6
+			return Vector2.ZERO
+
+
+## PENTARCH: circles you at mid range and shells you. Mortars land where you are and where you're heading,
+## aimed five-shot fans, and every third volley a pentagram of blasts closes around you.
+func _boss_penta(i: int, delta: float, nx: float, ny: float, d: float) -> Vector2:
+	var bs := _bs(i)
+	rot[i] += delta * 0.8
+	var sp := _boss_speed(i)
+	var v := Vector2(nx, ny) * sp
+	if d < 220.0:
+		v = Vector2(-ny, nx) * sp * 0.6  # circles you instead of retreating: melee builds can still reach it
+	var dmg := _boss_dmg(i)
+	if bs.get("fans", 0) > 0:
+		bs.fan_t -= delta
+		if bs.fan_t <= 0.0:
+			bs.fans -= 1
+			bs.fan_t = 0.28
+			_bullet_fan(px[i], py[i], atan2(ny, nx), 5, 0.55, 230.0, dmg)
+	if tmr[i] <= 0.0:
+		var cycle: int = bs.get("cycle", 0)
+		bs.cycle = cycle + 1
+		var pp := game.player.position
+		match cycle % 3:
+			0:  # mortars: on you, ahead of you, and somewhere between
+				var lead := game.player.velocity
+				_add_blast(pp, 75.0, 1.1, dmg * 1.5)
+				_add_blast(pp + lead, 75.0, 1.35, dmg * 1.5)
+				_add_blast(pp + lead * 0.5 + Vector2.from_angle(randf() * TAU) * 130.0, 75.0, 1.6, dmg * 1.5)
+				tmr[i] = 2.4
+			1:  # fans
+				bs.fans = 3
+				bs.fan_t = 0.0
+				tmr[i] = 2.2
+			_:  # pentagram: stay inside until the outer blasts go off, then get out
+				for k in 5:
+					_add_blast(pp + Vector2.from_angle(-PI / 2.0 + TAU * k / 5.0) * 130.0, 70.0, 1.0, dmg * 1.5)
+				_add_blast(pp, 80.0, 1.9, dmg * 1.5)
+				tmr[i] = 3.0
+				if hp[i] < mhp[i] * 0.5:
+					_boss_summon(i, "darter", 3, 100.0)
+		Sfx.play("shoot", 0.5)
+	return v
+
+
+## HEXCORE: a slow fortress. Creeps forward firing a spiral (direction flips every time, 4 arms when hurt),
+## then vents a ring and summons hexagons.
+func _boss_hex(i: int, delta: float, nx: float, ny: float) -> Vector2:
+	var bs := _bs(i)
+	match st[i]:
+		0:
+			rot[i] += delta * 0.4
+			if tmr[i] <= 0.0:
 				st[i] = 1
-				tmr[i] = 0.8
-				dx[i] = nx
-				dy[i] = ny
-		1:  # telegraph charge
+				tmr[i] = 3.2
+				bs.dir = -bs.get("dir", 1.0)
+				bs.fire_t = 0.0
+			return Vector2(nx, ny) * _boss_speed(i)
+		_:
+			rot[i] += delta * 2.4 * bs.dir
+			bs.fire_t -= delta
+			if bs.fire_t <= 0.0:
+				bs.fire_t = 0.1
+				var arms := 4 if hp[i] < mhp[i] * 0.5 else 3
+				for a in arms:
+					var ang := rot[i] + TAU * a / arms
+					game.hostile.spawn(px[i], py[i], cos(ang) * 200.0, sin(ang) * 200.0, _boss_dmg(i), 8.0)
+			if tmr[i] <= 0.0:
+				_bullet_ring(px[i], py[i], 18, rot[i], 0.9)
+				_boss_summon(i, "hexagon", 3, 110.0)
+				st[i] = 0
+				tmr[i] = 2.6
+			return Vector2(nx, ny) * _boss_speed(i) * 0.35  # keeps creeping while it fires
+
+
+## OCTAPRISM: laser beams (4, or 8 below half HP) that show a warning, then sweep around it.
+## Every other cycle it blinks next to you instead.
+func _boss_prism(i: int, delta: float, nx: float, ny: float, d: float) -> Vector2:
+	var bs := _bs(i)
+	match st[i]:
+		0:  # drift to mid range
+			rot[i] += delta * 0.5
+			if tmr[i] <= 0.0:
+				var cycle: int = bs.get("cycle", 0)
+				bs.cycle = cycle + 1
+				if cycle % 2 == 1:
+					st[i] = 3
+					tmr[i] = 0.8
+					bs.target = game.player.position + Vector2.from_angle(randf() * TAU) * 190.0
+				else:
+					st[i] = 1
+					tmr[i] = 1.1
+					bs.beams = 8 if hp[i] < mhp[i] * 0.5 else 4
+					bs.ang = atan2(ny, nx) + PI / bs.beams  # start between beams: you see them coming
+					bs.spin = PRISM_SPIN * (1.0 if randf() < 0.5 else -1.0)
+			return Vector2(nx, ny) * _boss_speed(i) * (1.0 if d > 200.0 else 0.0)
+		1:  # beam warning
+			if tmr[i] <= 0.0:
+				st[i] = 2
+				tmr[i] = 3.2
+				Sfx.play("laser", 0.6)
+			return Vector2.ZERO
+		2:  # beams sweep
+			bs.ang += bs.spin * delta
+			rot[i] = bs.ang
+			var pp := game.player.position - Vector2(px[i], py[i])
+			for k in bs.beams:
+				var dir := Vector2.from_angle(bs.ang + TAU * k / bs.beams)
+				var along := pp.dot(dir)
+				if along > 0.0 and along < PRISM_BEAM_LEN and absf(pp.cross(dir)) < PRISM_BEAM_WIDTH + Balance.PLAYER_RADIUS * 0.6:
+					game.player.contact(_boss_dmg(i) * 1.3)
+			if tmr[i] <= 0.0:
+				st[i] = 0
+				tmr[i] = 1.6
+			return Vector2.ZERO
+		_:  # blink
+			if tmr[i] <= 0.0:
+				var to: Vector2 = bs.target
+				game.fx.burst(px[i], py[i], t_color[typ[i]], 16, t_radius[typ[i]])
+				px[i] = to.x
+				py[i] = to.y
+				_bullet_ring(to.x, to.y, 16, rot[i], 0.9)
+				game.fx.ring(to.x, to.y, 120.0, t_color[typ[i]], 0.35, 4.0)
+				Sfx.play("dash", 0.5)
+				st[i] = 0
+				tmr[i] = 1.4
+			return Vector2.ZERO
+
+
+## THE SINGULARITY: always drags you in a little. Alternates between a collapsing bullet ring around you
+## (one gap to escape through) and an event horizon: a strong pull while it sprays outward rings.
+func _boss_void(i: int, delta: float, nx: float, ny: float, d: float) -> Vector2:
+	var bs := _bs(i)
+	rot[i] += delta * 0.7
+	var pull := VOID_PULL
+	var v := Vector2(nx, ny) * _boss_speed(i)
+	match st[i]:
+		0:
+			if tmr[i] <= 0.0:
+				var cycle: int = bs.get("cycle", 0)
+				bs.cycle = cycle + 1
+				if hp[i] < mhp[i] * 0.5:
+					_boss_summon(i, "shard", 5, 90.0)
+				if cycle % 2 == 0:
+					var pp := game.player.position
+					hazards.append({"kind": "collapse", "x": pp.x, "y": pp.y, "r": 310.0, "t": 1.0, "warn": 1.0,
+							"dmg": _boss_dmg(i), "count": 30, "gap": randi() % 30, "gap_n": 4})
+					tmr[i] = 2.6
+				else:
+					st[i] = 1
+					tmr[i] = 0.9
+		1:  # horizon forming
 			v = Vector2.ZERO
 			if tmr[i] <= 0.0:
 				st[i] = 2
-				tmr[i] = 0.75
-				Sfx.play("dash", 0.7)
-		2:  # charge
-			v = Vector2(dx[i], dy[i]) * 540.0 * speed_mult
+				tmr[i] = 2.8
+				bs.fire_t = 0.0
+				Sfx.play("boss", 1.4)
+		_:  # event horizon
+			v = Vector2.ZERO
+			pull = VOID_HORIZON_PULL
+			bs.fire_t -= delta
+			if bs.fire_t <= 0.0:
+				bs.fire_t = 0.55
+				bs.flip = not bs.get("flip", false)
+				_bullet_ring(px[i], py[i], 14, PI / 14.0 if bs.flip else 0.0, 0.7)
 			if tmr[i] <= 0.0:
-				if id == "boss_tetra":
-					_bullet_ring(px[i], py[i], 12, rot[i], 1.0)
-					for k in 5:
-						var a := TAU * k / 5.0
-						spawn("dot", px[i] + cos(a) * 90.0, py[i] + sin(a) * 90.0, game.director.hp_mult)
-					st[i] = 0
-					tmr[i] = 2.6
-				else:
-					st[i] = 3
-					tmr[i] = 2.8
-					tmr2[i] = floorf(tmr2[i])  # fractional part = spiral fire timer
-		3:  # spiral
-			v *= 0.3
-			var arms := 2 if id == "boss_hex" else maxi(2, sides / 2)
-			dx[i] -= delta
-			if dx[i] <= 0.0:
-				dx[i] = 0.11
+				st[i] = 0
+				tmr[i] = 2.2
+	if d < 900.0:
+		game.player.position -= Vector2(nx, ny) * pull * delta
+	return v
+
+
+## THE POLYGON: gains a side for every sixth of its HP lost (bullet burst on each change),
+## charges, then fires a spiral whose arm count grows with its sides.
+func _boss_polygon(i: int, delta: float, nx: float, ny: float) -> Vector2:
+	var frac := hp[i] / mhp[i]
+	var sides := mini(3 + int((1.0 - frac) * 6.0), 8)
+	if sides != int(tmr2[i]):
+		if tmr2[i] > 0.0:
+			_bullet_ring(px[i], py[i], sides * 4, 0.0, 1.1)
+			game.fx.shake(10.0)
+			Sfx.play("boss", 0.8)
+		tmr2[i] = sides
+	var sp := _boss_speed(i) * (1.0 + (sides - 3) * 0.06)
+	rot[i] += delta * (0.5 + (sides - 3) * 0.15)
+	match st[i]:
+		0:  # chase
+			if tmr[i] <= 0.0:
+				_boss_windup(i, nx, ny, 0.8)
+			return Vector2(nx, ny) * sp
+		1:  # wind-up
+			if tmr[i] <= 0.0:
+				st[i] = 2
+				tmr[i] = POLY_CHARGE_TIME
+				Sfx.play("dash", 0.7)
+			return Vector2.ZERO
+		2:  # charge
+			if tmr[i] <= 0.0:
+				st[i] = 3
+				tmr[i] = 2.8
+				_bs(i).fire_t = 0.0
+			return Vector2(dx[i], dy[i]) * POLY_CHARGE_SPEED * speed_mult
+		_:  # spiral
+			var bs := _bs(i)
+			var arms := maxi(2, sides / 2)
+			bs.fire_t -= delta
+			if bs.fire_t <= 0.0:
+				bs.fire_t = 0.11
 				for a in arms:
 					var ang := rot[i] * 2.2 + TAU * a / arms
-					game.hostile.spawn(px[i], py[i], cos(ang) * 200.0, sin(ang) * 200.0, dmg, 8.0)
+					game.hostile.spawn(px[i], py[i], cos(ang) * 200.0, sin(ang) * 200.0, _boss_dmg(i), 8.0)
 			if tmr[i] <= 0.0:
 				st[i] = 0
 				tmr[i] = 2.4
-				_bullet_ring(px[i], py[i], 16 if id == "boss_hex" else sides * 3, 0.0, 0.9)
-				var summon := "hexagon" if id == "boss_hex" else ("brute" if sides > 5 else "darter")
-				for k in 3:
-					var a := TAU * k / 3.0 + rot[i]
-					spawn(summon, px[i] + cos(a) * 110.0, py[i] + sin(a) * 110.0, game.director.hp_mult)
-	return v
+				_bullet_ring(px[i], py[i], sides * 3, 0.0, 0.9)
+				_boss_summon(i, "brute" if sides > 5 else "darter", 3, 110.0)
+			return Vector2(nx, ny) * sp * 0.3
 
 
 func _bullet_ring(x: float, y: float, count: int, offset: float, speed_scale: float) -> void:
@@ -327,6 +581,66 @@ func _bullet_ring(x: float, y: float, count: int, offset: float, speed_scale: fl
 	for k in count:
 		var a := offset + TAU * k / count
 		game.hostile.spawn(x, y, cos(a) * 170.0 * speed_scale, sin(a) * 170.0 * speed_scale, dmg, 8.0)
+
+
+func _bullet_fan(x: float, y: float, ang: float, count: int, spread: float, speed: float, dmg: float) -> void:
+	for k in count:
+		var a := ang + spread * (float(k) / (count - 1) - 0.5)
+		game.hostile.spawn(x, y, cos(a) * speed, sin(a) * speed, dmg, 7.0)
+
+
+# ------------------------------------------------------------------ boss hazards (telegraphed attacks)
+
+func _add_blast(p: Vector2, r: float, warn: float, dmg: float) -> void:
+	hazards.append({"kind": "blast", "x": p.x, "y": p.y, "r": r, "t": warn, "warn": warn, "dmg": dmg})
+
+
+func _update_hazards(delta: float) -> void:
+	var k := hazards.size() - 1
+	while k >= 0:
+		var h: Dictionary = hazards[k]
+		h.t -= delta
+		if h.t <= 0.0:
+			hazards.remove_at(k)
+			_trigger_hazard(h)
+		k -= 1
+
+
+func _trigger_hazard(h: Dictionary) -> void:
+	match h.kind:
+		"blast":
+			game.fx.ring(h.x, h.y, h.r, Balance.C_DANGER, 0.3, 5.0)
+			game.fx.burst(h.x, h.y, Color(1.0, 0.5, 0.2), 8, h.r * 0.5)
+			game.fx.shake(3.0)
+			if game.player.position.distance_to(Vector2(h.x, h.y)) < h.r + Balance.PLAYER_RADIUS * 0.5:
+				game.player.contact(h.dmg)
+		"collapse":
+			var sp := 150.0
+			for k in h.count:
+				if _in_gap(h, k):
+					continue
+				var dir := Vector2.from_angle(TAU * k / h.count)
+				var p: Vector2 = Vector2(h.x, h.y) + dir * h.r
+				game.hostile.spawn(p.x, p.y, -dir.x * sp, -dir.y * sp, h.dmg, 8.0, h.r * 1.7 / sp)
+
+
+func _in_gap(h: Dictionary, k: int) -> bool:
+	return posmod(k - int(h.gap), int(h.count)) < int(h.gap_n)
+
+
+func _draw_hazards() -> void:
+	for h in hazards:
+		var c := Vector2(h.x, h.y)
+		var prog := 1.0 - clampf(h.t / h.warn, 0.0, 1.0)
+		match h.kind:
+			"blast":
+				draw_circle(c, h.r * prog, Color(Balance.C_DANGER, 0.16))
+				Shapes.draw_neon_ring(self, c, h.r, Color(Balance.C_DANGER, 0.35 + 0.4 * prog), 2.0, 32)
+			"collapse":
+				var blink := 0.35 + 0.35 * sin(h.t * 30.0)
+				for k in h.count:
+					if not _in_gap(h, k):
+						draw_circle(c + Vector2.from_angle(TAU * k / h.count) * h.r, 4.0 + prog * 3.0, Color(Balance.C_DANGER, blink))
 
 
 # ------------------------------------------------------------------ damage
@@ -373,6 +687,7 @@ func _kill(i: int, source: String) -> void:
 		ELITE:
 			game.gems.drop_core(x, y)
 		BOSS:
+			boss_state.erase(uid[i])
 			game.on_boss_killed(type_ids[t], x, y)
 	game.on_kill(x, y, source)
 
@@ -382,8 +697,12 @@ func compact() -> void:
 	while i >= 0:
 		if dead[i]:
 			var last := n - 1
+			if i == boss_idx:
+				boss_idx = -1
 			if i != last:
 				_move(last, i)
+				if boss_idx == last:
+					boss_idx = i
 			n -= 1
 		i -= 1
 
@@ -411,6 +730,7 @@ func _move(from: int, to: int) -> void:
 
 func clear_all() -> void:
 	n = 0
+	hazards.clear()
 
 
 # ------------------------------------------------------------------ queries
@@ -534,6 +854,7 @@ func render() -> void:
 
 func _draw() -> void:
 	# telegraphs and bosses: few, unique -> immediate drawing
+	_draw_hazards()
 	for i in n:
 		if dead[i]:
 			continue
@@ -549,12 +870,13 @@ func _draw() -> void:
 
 
 ## Bosses are drawn by hand (they are few): a breathing hull, a counter-rotating core,
-## sparks orbiting the vertices, cracks as HP drops, and a hot glow while charging.
+## sparks orbiting the vertices, cracks as HP drops, and each boss's own telegraphs.
 func _draw_boss(i: int) -> void:
 	var t := typ[i]
+	var id := type_ids[t]
 	var c := Vector2(px[i], py[i])
 	var sides := t_sides[t]
-	if type_ids[t] == "boss_final":
+	if id == "boss_final":
 		sides = maxi(3, int(tmr2[i]))
 	var base_col := t_color[t]
 	var col := Color(1, 1, 1) if flash[i] > 0.0 else base_col
@@ -562,33 +884,35 @@ func _draw_boss(i: int) -> void:
 	var now := game.time
 	var frac := clampf(hp[i] / mhp[i], 0.0, 1.0)
 	var state := st[i]
+	var bs := _bs(i)
+	var charger := id == "boss_tetra" or id == "boss_final"
 	# breathing: faster and deeper when hurt, squashes while winding up a charge
 	var pulse := 1.0 + sin(now * (3.0 + (1.0 - frac) * 4.0)) * 0.05
 	var squash := Vector2.ONE
-	if state == 1:
-		var k := 1.0 - clampf(tmr[i] / 0.8, 0.0, 1.0)
+	if charger and state == 1:
+		var k := 1.0 - clampf(tmr[i] / bs.get("wind", 0.8), 0.0, 1.0)
 		squash = Vector2(1.0 + k * 0.18, 1.0 - k * 0.12)
-	elif state == 2:
+	elif charger and state == 2:
 		pulse *= 1.08
 	var xf := Transform2D(rot[i], squash * pulse, 0.0, c)
 
-	# outer aura ring
-	var aura_col := Balance.C_DANGER if state >= 1 and state <= 2 else base_col
+	# outer aura ring: hot while attacking
+	var attacking := state >= 1 and (state <= 2 or not charger)
+	var aura_col := Balance.C_DANGER if attacking else base_col
 	Shapes.draw_neon_ring(self, c, r * (1.35 + sin(now * 2.0) * 0.06), Color(aura_col, 0.25 + (0.35 if state == 1 else 0.0)), 2.0, 48)
 	# hull and counter-rotating core
 	Shapes.draw_neon_poly(self, xf * Shapes.points(sides, r, 0.0), col, 4.0, 0.14 + (1.0 - frac) * 0.12)
 	var core_xf := Transform2D(-rot[i] * 2.7 - now, Vector2.ONE * pulse, 0.0, c)
 	Shapes.draw_neon_poly(self, core_xf * Shapes.points(sides, r * 0.5, 0.0), Color(col, 0.8), 2.5)
 	Shapes.draw_neon_ring(self, c, r * (0.16 + 0.04 * sin(now * 8.0)), Color(1, 1, 1, 0.85), 2.0, 16)
-	# spokes from core to hull vertices
-	var hull := xf * Shapes.points(sides, r, 0.0)
-	for v in hull:
-		draw_line(c, c.lerp(v, 0.9), Color(col, 0.25), 1.5)
-	# vertex sparks orbiting just outside the hull
-	for k in hull.size():
-		var a := rot[i] + TAU * k / sides + now * 1.6
-		var sp := c + Vector2(cos(a), sin(a)) * r * 1.18 * pulse
-		draw_circle(sp, 3.5, Color(col, 0.9))
+	# spokes from core to hull vertices, and sparks orbiting just outside
+	var sparks := 8 if sides == 0 else sides
+	if sides > 0:
+		for v in xf * Shapes.points(sides, r, 0.0):
+			draw_line(c, c.lerp(v, 0.9), Color(col, 0.25), 1.5)
+	for k in sparks:
+		var a := rot[i] + TAU * k / sparks + now * 1.6
+		draw_circle(c + Vector2(cos(a), sin(a)) * r * 1.18 * pulse, 3.5, Color(col, 0.9))
 	# cracks: one jagged line per quarter of HP lost
 	var cracks := int((1.0 - frac) * 4.0)
 	for k in cracks:
@@ -599,7 +923,32 @@ func _draw_boss(i: int) -> void:
 			var aj := a0 + (0.25 if step % 2 == 0 else -0.25)
 			pts.append(c + Vector2(cos(aj), sin(aj)) * rr * pulse)
 		draw_polyline(pts, Color(1, 1, 1, 0.55), 1.5)
-	# charge telegraph
-	if state == 1:
-		var blink := 0.4 + 0.4 * sin(tmr[i] * 30.0)
-		Shapes.draw_neon_line(self, c, c + Vector2(dx[i], dy[i]) * 405.0, Color(Balance.C_DANGER, blink), 3.0)
+
+	match id:
+		"boss_tetra", "boss_final":
+			if state == 1:
+				var reach := TETRA_CHARGE_SPEED * TETRA_CHARGE_TIME if id == "boss_tetra" else POLY_CHARGE_SPEED * POLY_CHARGE_TIME
+				var blink := 0.4 + 0.4 * sin(tmr[i] * 30.0)
+				Shapes.draw_neon_line(self, c, c + Vector2(dx[i], dy[i]) * reach, Color(Balance.C_DANGER, blink), 3.0)
+		"boss_prism":
+			if state == 1 or state == 2:
+				for k in bs.beams:
+					var dir := Vector2.from_angle(bs.ang + TAU * k / bs.beams)
+					var end := c + dir * PRISM_BEAM_LEN
+					if state == 1:
+						var blink := 0.3 + 0.3 * sin(tmr[i] * 30.0)
+						draw_line(c, end, Color(Balance.C_DANGER, blink), 2.0)
+					else:
+						Shapes.draw_neon_line(self, c, end, Color(base_col, 0.9), PRISM_BEAM_WIDTH * 1.2)
+						draw_line(c, end, Color(1, 1, 1, 0.8), 3.0)
+			elif state == 3:
+				var to: Vector2 = bs.target
+				var k := 1.0 - clampf(tmr[i] / 0.8, 0.0, 1.0)
+				Shapes.draw_neon_poly(self, Transform2D(-now * 3.0, to) * Shapes.points(8, r * (1.6 - k * 0.6)), Color(Balance.C_DANGER, 0.3 + k * 0.5), 2.0)
+		"boss_void":
+			# rings falling inward show the pull; much brighter during the event horizon
+			var strength := 0.8 if state == 2 else (0.45 if state == 1 else 0.18)
+			for k in 3:
+				var f := fmod(now * (0.9 if state == 2 else 0.4) + k / 3.0, 1.0)
+				Shapes.draw_neon_ring(self, c, r * (1.3 + (1.0 - f) * 3.2), Color(base_col, strength * f), 2.0, 48)
+			draw_circle(c, r * 0.42, Color(0, 0, 0, 0.9))
