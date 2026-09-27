@@ -5,7 +5,7 @@ extends RefCounted
 
 # ---------------------------------------------------------------- palette
 # Rule: cool colors = player side, warm colors = enemies, green = XP, gold = rare.
-const C_BG := Color(0.02, 0.02, 0.05)
+const C_BG := Color(0, 0, 0)
 const C_GRID := Color(0.07, 0.08, 0.16)
 const C_GRID_MAJOR := Color(0.11, 0.12, 0.25)
 const C_PLAYER := Color(0.25, 0.95, 1.0)

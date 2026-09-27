@@ -282,7 +282,7 @@ static func fit_safe_area(c: Control) -> void:
 ## Full-screen dim layer that blocks input to the game below.
 static func dim(alpha := 0.75) -> ColorRect:
 	var c := ColorRect.new()
-	c.color = Color(0.01, 0.01, 0.03, alpha)
+	c.color = Color(0, 0, 0, alpha)
 	c.set_anchors_preset(Control.PRESET_FULL_RECT)
 	c.mouse_filter = Control.MOUSE_FILTER_STOP
 	return c

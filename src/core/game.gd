@@ -67,6 +67,7 @@ func _ready() -> void:
 	add_child(hostile)
 	player = Player.new()
 	player.material = Shapes.get_add_material()
+	player.z_index = 1  # above fx bursts
 	add_child(player)
 	fx = Fx.new()
 	add_child(fx)
