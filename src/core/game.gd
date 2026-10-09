@@ -312,7 +312,14 @@ func _shards(x: float, y: float, angles: Array, source: String) -> void:
 	var src := bullets.source_id(source)
 	var wd: float = build.weapons[0].s.damage
 	for a in angles:
-		bullets.spawn(x, y, cos(a) * 420.0, sin(a) * 420.0, 0.4, wd, Bullets.Kind.SHARD, src, 1, 0, 1.0, 30.0, Balance.SHARD_K)
+		bullets.spawn(x, y, cos(a) * 420.0, sin(a) * 420.0, 0.4, wd, Bullets.Kind.SHARD, src, 1, 0, 1.0, 0.0, Balance.SHARD_K)
+
+
+## Static Field: an enemy bullet that reached the player missed instead.
+func on_bullet_missed() -> void:
+	fx.ring(player.position.x, player.position.y, 34.0, Color(Balance.C_PLAYER, 0.6), 0.2, 2.0)
+	for w in build.weapons:
+		w.on_bullet_missed()
 
 
 ## Called after the player took a hit.

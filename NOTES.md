@@ -1,4 +1,4 @@
-# Session notes
+z# Session notes
 
 ## 2026-09-24
 
@@ -151,6 +151,7 @@ Everything above this section describes the old multi-weapon game and is kept as
 - **Damage formula:** `(weapon damage × k × attack damage × crit damage + bonus damage × k) × damage multiplier`. The hit is rolled when it lands, not when it's fired.
 - **Cooldown:** reductions multiply (−10% twice is ×0.81).
 - **Attacks come from the pointy part.** Triangle turns to face its target and shoots from the tip; Square's rods grow from its corners and its body spins with them; Spark's arcs leave the nearer tip.
+- **Spark** was first drawn as a lightning bolt; it is a four-point star since the second pass.
 - **Colors.** Each character has one color (red, green, blue, yellow) used for its body, attacks, XP gems and UI accent. All enemies, enemy bullets and danger markers are violet to magenta. Heals are white.
 - **Overclocks:** 21 now. Glass Core is a damage multiplier; six new ones; an overclock can be limited to the weapons it works for.
 - **Save:** run history from before the overhaul is cleared once (save version 2). Best times and depth unlocks are kept.
@@ -196,6 +197,39 @@ What it shows:
 - **Event Horizon is the weakest form:** it never reaches 15:00. Dragging enemies onto a close-range character hurts more than it helps.
 - **Focus Fire reaches the final boss but never kills it.**
 
+## 2026-10-09 (second pass): weapon changes after first review
+
+The baseline table above was measured **before** these changes and no longer describes Pulse Ring, Chain Arc, Focus Fire, Deadeye or Aegis. It has not been re-run.
+
+**All weapons**
+- No weapon has knockback of its own any more. Knockback upgrades are now flat amounts instead of percentages: Battering Ram +80, Impact +40, Undertow +60 (as a pull), Aegis +90.
+
+**Vertex Shot**
+- Focus Fire: shots aim normally, then turn toward another enemy within 280px after each hit while they have pierce left. Only the enemy just hit is excluded, so a shot can go back and forth between two.
+- Deadeye: no more redirecting. A crit doesn't use up pierce.
+
+**Rods**
+- Rods are always evenly spaced (no more corner slots).
+- "Sweep time" is gone as a term. The tree's cooldown levels are now +10% spin speed, Buzzsaw is +30% spin speed, and cooldown reduction from other sources is shown as the spin it adds.
+- Aegis no longer heals for destroyed bullets.
+
+**Pulse Ring**
+- Base damage 8 (was 12).
+- Level 4 Hard Pulse: +10% crit, +30% crit damage. Level 6: +20% ring speed, +5 WD (was +1 ring). Level 7 Sharp Wave: +20% crit. Level 8: +30% ring size.
+- New level-10 forms: Double Pulse, Repulsor, Tide (Shockwave, Metronome and Implosion are removed).
+
+**Chain Arc**
+- Spark is a four-point star; arcs leave the nearest of its four points.
+- Jumps no longer lose damage, and a jump can go to any enemy except the one it just hit.
+- Conductor is now +7 WD, +30% damage.
+- New level-10 forms: Cascade, Detonation, Static Field (Tesla Grid, Thunderstorm and Static Skin are removed).
+
+**Numbers I picked where the request left them open**
+- Detonation: 60px blast plus 12px per jump (× area), hits ×1.2 flat.
+- Repulsor: knockback 240 on the 3rd ring.
+- Tide: one pass (in or out) takes 0.5 × cooldown × (cooldown ÷ base cooldown) ÷ ring speed, so cooldown reduction counts twice. Each pass hits every enemy once.
+- Static Field: one spark with the full jump count per missed bullet.
+
 ## Current characters, weapons and upgrades (as of 2026-10-09)
 
 A snapshot of how everything works right now. The numbers live in `src/data/balance.gd`; the behavior lives in `src/weapons/*.gd`, `src/core/build.gd` (`recompute`, `roll_hit`) and `src/core/game.gd` (kill and hit effects). Update this section whenever balance changes.
@@ -209,10 +243,11 @@ A snapshot of how everything works right now. The numbers live in `src/data/bala
 - **Damage multiplier:** 1 + Glass Core, plus Anchor (standing still), Redline (below 50% HP), Slipstream and Running Start (moving), Bloodlust (5s after every 100 kills). Read when the hit lands.
 - **k:** 1 for a normal hit. Lower for weak secondary hits, ×2 on an Overcharge attack.
 - Enemy armor is subtracted afterwards.
+- **Knockback:** weapons have none of their own. It only comes from upgrades, as a flat amount.
 
 Other rules:
 - **Cooldown:** base × (1 + step) for every step. Floor 0.05s.
-- **Area, speed, knockback, width:** added together, then multiplied in (never below ×0.3).
+- **Area, speed, width:** added together, then multiplied in (never below ×0.3).
 - **What each stat means per weapon:**
 
 | Stat | Vertex Shot | Rods | Pulse Ring | Chain Arc |
@@ -220,7 +255,7 @@ Other rules:
 | count | projectiles | rods | rings | sparks |
 | area | projectile size | rod length | ring size | targeting range, blast size |
 | speed | projectile speed and range | spin | ring expansion | jump range |
-| cooldown | time between volleys | sweep time (spin) | time between pulses | time between sparks |
+| cooldown | time between volleys | adds spin | time between pulses | time between sparks |
 
 ### Characters
 | Character | Color | HP | Speed | Armor | Crit | Pickup | Weapon |
@@ -234,52 +269,52 @@ Other rules:
 Levels 4, 7 and 10 are pick-one. "WD" is weapon damage.
 
 **Vertex Shot** (Triangle)
-- Base: 10 damage, 0.7s cooldown, 1 shot, 1 pierce, speed 560, flies 1.1s, knockback 60. Each shot aims at a different nearest enemy within 620px; extras fan out.
+- Base: 10 damage, 0.7s cooldown, 1 shot, 1 pierce, speed 560, flies 1.1s. Each shot aims at a different nearest enemy within 620px; extras fan out.
 - 2: +1 projectile · 3: +20% speed, +5 WD
 - **4:** Volley (+2 projectiles, −5 WD) / High Velocity (+30% speed, +5 WD) / Keen Edge (+10% crit, +20% crit damage)
 - 5: −10% cooldown · 6: +1 projectile, +1 pierce
 - **7:** Rapid Fire (−10% cooldown, +1 projectile, +1 pierce) / Heavy Shot (+7 WD, +30% damage, +30% size) / Precision (+10% crit, +30% crit damage, +1 pierce)
 - 8: +20% speed, +20% size · 9: −10% cooldown
 - **10:**
-  - **Focus Fire:** every shot aims at the closest enemy in a tight fan. +2 pierce.
+  - **Focus Fire:** after each hit a shot turns toward another enemy within 280px while it has pierce left (never the one it just hit, so it can alternate between two). +2 pierce.
   - **Star Burst:** doubles the projectile count. +20 bonus damage, −5 WD.
-  - **Deadeye:** crits ricochet to another enemy within 280px (3 per shot). +10 WD, +10% crit, +50% crit damage, −10% cooldown.
+  - **Deadeye:** a crit doesn't use up pierce. +10 WD, +10% crit, +50% crit damage, −10% cooldown.
 
 **Rods** (Square; id `orbitals`)
-- Base: 11 damage, 2 rods, 90px long, 7px half-width, spin 2.6 rad/s, knockback 90. Rods sit on the corners (opposite ones first), then on edge midpoints from the fifth. Each rod hits everything along it once per pass.
+- Base: 11 damage, 2 rods, 90px long, 7px half-width, spin 2.6 rad/s. Rods are evenly spaced and each hits everything along it once per pass.
 - 2: +1 rod · 3: +20% length, +4 WD
 - **4:** Extra Rod (+1 rod, −3 WD) / Flywheel (+25% spin, +5 WD) / Long Reach (+25% length, +20% width)
-- 5: −10% sweep time · 6: +1 rod, +10% length
-- **7:** Buzzsaw (−10% sweep time, +20% spin) / Heavy Rods (+7 WD, +30% damage, +30% width) / Battering Ram (+40% knockback, +20% length, +10 bonus)
-- 8: +20% spin, +15% length · 9: −10% sweep time
+- 5: +10% spin · 6: +1 rod, +10% length
+- **7:** Buzzsaw (+30% spin) / Heavy Rods (+7 WD, +30% damage, +30% width) / Battering Ram (+80 knockback, +20% length, +10 bonus)
+- 8: +20% spin, +15% length · 9: +10% spin
 - **10:**
   - **Saturn:** a second set of rods floats from 1.1× to 1.8× reach and spins the other way at 0.8× speed.
-  - **Aegis:** rods ×0.75 length, k 1.5, double knockback. Rods destroy enemy bullets and heal 0.5 HP per bullet.
+  - **Aegis:** rods ×0.75 length, k 1.5, +90 knockback. Rods destroy enemy bullets (no heal).
   - **Event Horizon:** +25% length. Non-boss enemies within 1.8× reach are dragged in to 0.6× reach.
 
 **Pulse Ring** (Circle)
-- Base: 12 damage, 2.2s cooldown, 1 ring, 170px, full size in 0.42s, knockback 160. A ring hits each enemy once; extra rings follow 0.22s apart.
+- Base: 8 damage, 2.2s cooldown, 1 ring, 170px, full size in 0.42s. A ring hits each enemy once.
 - 2: +5 WD · 3: +20% size
-- **4:** Quick Pulse (−15% cooldown) / Wide Band (+25% size, +20% ring speed) / Hard Pulse (+6 WD, +40% knockback)
-- 5: −10% cooldown · 6: +1 ring
-- **7:** Steady Beat (−10% cooldown, +15% size) / Amplitude (+8 WD, +30% damage) / Sharp Wave (+10% crit, +30% crit damage)
-- 8: +20% size, +5 WD · 9: −10% cooldown
+- **4:** Quick Pulse (−15% cooldown) / Wide Band (+25% size, +20% ring speed) / Hard Pulse (+10% crit, +30% crit damage)
+- 5: −10% cooldown · 6: +20% ring speed, +5 WD
+- **7:** Steady Beat (−10% cooldown, +15% size) / Amplitude (+8 WD, +30% damage) / Sharp Wave (+20% crit)
+- 8: +30% size · 9: −10% cooldown
 - **10:**
-  - **Shockwave:** k 1.5, and slows enemies it hits by 50% for 2s.
-  - **Metronome:** a beat every 0.45 × cooldown. Beats 1–3 are small rings (×0.75 size, k 0.4); every 4th is big (×1.6 size, k 2.2).
-  - **Implosion:** rings start at full size and collapse inward at k 1.8, pulling enemies in and collecting XP within 1.2× ring size.
+  - **Double Pulse:** +1 ring (0.22s behind the first), +15% cooldown.
+  - **Repulsor:** every 3rd ring has 240 knockback and destroys the enemy bullets it crosses.
+  - **Tide:** one permanent ring sweeps out and back in. Each pass hits every enemy once and takes 0.5 × cooldown × (cooldown ÷ base cooldown) ÷ ring speed.
 
 **Chain Arc** (Spark)
-- Base: 9 damage, 1.3s cooldown, 1 spark, 2 jumps, knockback 20. A spark starts at a nearest enemy within 420px × area, then jumps to the nearest unhit enemy within 150px × speed. Each jump loses 12%.
+- Base: 9 damage, 1.3s cooldown, 1 spark, 2 jumps. A spark starts at a nearest enemy within 420px × area, then jumps to the nearest enemy within 150px × speed other than the one it just hit. No damage loss per jump.
 - 2: +2 jumps · 3: +5 WD, +15% jump range
 - **4:** Fork (+1 spark, −3 WD) / Long Chain (+2 jumps, +5 WD) / Live Wire (+10% crit, +20% crit damage)
 - 5: −10% cooldown · 6: +1 spark, +1 jump
-- **7:** Overload (−10% cooldown, +1 spark) / Conductor (+7 WD, +30% damage, jumps lose 6%) / Far Reach (+30% jump range, +2 jumps, +10 bonus)
+- **7:** Overload (−10% cooldown, +1 spark) / Conductor (+7 WD, +30% damage) / Far Reach (+30% jump range, +2 jumps, +10 bonus)
 - 8: +2 jumps, +20% jump range · 9: −10% cooldown
 - **10:**
-  - **Tesla Grid:** no loss per jump, double jump range, fires every 0.75 × cooldown.
-  - **Thunderstorm:** 2 + 2 × sparks bolts on the enemies nearest you (within 0.8 × view radius), each a 55px × area blast at k 0.8. A crit bolt also sends a 2-jump spark at k 0.6.
-  - **Static Skin:** every 0.7 × cooldown, shocks up to 10 + 2 × jumps enemies within 210px × area at k 1.6. Getting hit triggers a k 3.2 discharge (at most every 0.4s).
+  - **Cascade:** each jump hits 12% harder than the one before.
+  - **Detonation:** no jumps. Each spark explodes on its target: (60px + 12px per jump) × area, k 1.2.
+  - **Static Field:** +30% max HP. Enemy bullets miss half the time, and each miss throws a full spark at the nearest enemy.
 
 ### Passives (pick 4 of 8, 10 levels each)
 | Passive | Levels 1–4 | Level 5 (pick one) | Levels 6–9 | Level 10 (pick one) |
@@ -287,7 +322,7 @@ Levels 4, 7 and 10 are pick-one. "WD" is weapon damage.
 | Damage | +10% damage | Power: +30% damage / Payload: +10 bonus | +20% damage | Overwhelm: +50% damage / Warhead: +20 bonus / Bloodlust: every 100 kills, +30% all damage for 5s |
 | Cooldown | −5% | Tempo: −9% / Quickstep: −5%, +8% move speed | −5% | Frenzy: −12% / Double Tap: −6%, every 5th attack fires twice / Adrenaline: −30% for 3s after being hit |
 | Critical | +5% chance | Sharp Eye: +7% chance / Brutality: +40% crit damage | +25% crit damage | Devastate: +75% crit damage / Marksman: +10% chance / Arc Crits: crits arc for 50% of the hit |
-| Area | +8% | Expanse: +15% / Impact: +8%, +20% knockback | +8% | Vastness: +25% / Undertow: +10%, hits pull instead of push / Chain Reaction: kills explode 15% of the time |
+| Area | +8% | Expanse: +15% / Impact: +8%, +40 knockback | +8% | Vastness: +25% / Undertow: +10%, +60 knockback as a pull / Chain Reaction: kills explode 15% of the time |
 | Velocity | +8% speed | Rush: +15% / Stride: +8%, +5% move speed | +8% | Hypersonic: +25% / Splinter: kills throw 2 shards / Tailwind: +10%, +10% move speed |
 | Hull | +15 max HP, +0.2 HP/s | Bulk: +40 HP / Plating: +1.5 armor | same as 1–4 | Colossus: +60 HP / Bastion: +3 armor / Reactive Plating: being hit shocks enemies within 200px at k 3 |
 | Magnet | +20% pickup range, +3% XP | Long Arm: +40% range / Scholar: +10% XP | same as 1–4 | Savant: +15% XP / Vacuum: pulls all XP on screen every 30s / Recycler: XP pickups heal 0.2 HP |
@@ -322,6 +357,4 @@ Levels 4, 7 and 10 are pick-one. "WD" is weapon damage.
 | Overcharge (new) | Every 4th attack deals double | +10% cooldown |
 
 ### Where each build stands
-See the baseline table in the 2026-10-09 section. Nothing has been tuned since the overhaul.
-- **Too strong:** Pulse Ring (all three forms).
-- **Too weak:** Chain Arc (all three forms) and Event Horizon.
+Not measured since the second pass on 2026-10-09: the baseline table predates the Pulse Ring and Chain Arc reworks. Re-run it before tuning.

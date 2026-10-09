@@ -58,7 +58,7 @@ static func xp_needed(level: int) -> int:
 	return int(5.0 + level * 6.0 + level * level * 0.45 + pow(level, 3.0) * 0.012)
 
 # ---------------------------------------------------------------- characters
-# One weapon per character. `shape` overrides the regular polygon given by `sides`.
+# One weapon per character. `sides`: 0 = circle, 3+ = polygon, negative = star with that many points.
 const CHARACTERS := {
 	"triangle": {
 		"name": "TRIANGLE", "sides": 3, "color": Color(1.0, 0.3, 0.25),
@@ -79,10 +79,10 @@ const CHARACTERS := {
 		"desc": "Balanced. Much larger pickup range. Pulses in every direction.",
 	},
 	"spark": {
-		"name": "SPARK", "sides": 0, "shape": "spark", "color": Color(1.0, 0.9, 0.3),
+		"name": "SPARK", "sides": -4, "color": Color(1.0, 0.9, 0.3),
 		"hp": 90.0, "speed": 215.0, "armor": 0.0, "crit": 0.05, "pickup": 100.0,
 		"start": "chain_arc",
-		"desc": "Quick and light. +5% crit chance. Lightning leaps from its tips.",
+		"desc": "Quick and light. +5% crit chance. Lightning leaps from its four points.",
 	},
 }
 
@@ -97,6 +97,7 @@ const CHARACTERS := {
 # cooldown = base x (1 + step) for every "cooldown" step, so -10% twice is x0.81.
 
 # ---------------------------------------------------------------- weapons
+# No weapon pushes enemies by itself: knockback only comes from upgrades (flat "knockback").
 # `base` = level 1 stats. `levels[i]` is what reaching level i+2 gives: a mods Dictionary, or at a
 # milestone an Array of options {name, mods, desc?, evo?} the player picks one of.
 # A level-10 option's `evo` switches the weapon script into that form.
@@ -104,7 +105,7 @@ const WEAPONS := {
 	"vertex_shot": {
 		"name": "Vertex Shot",
 		"desc": "Fires triangles at the nearest enemies.",
-		"base": {"damage": 10.0, "cooldown": 0.7, "count": 1, "speed": 560.0, "pierce": 1, "duration": 1.1, "knockback": 60.0},
+		"base": {"damage": 10.0, "cooldown": 0.7, "count": 1, "speed": 560.0, "pierce": 1, "duration": 1.1},
 		"levels": [
 			{"count": 1},
 			{"speed": 0.20, "wd": 5},
@@ -118,59 +119,59 @@ const WEAPONS := {
 			 {"name": "Precision", "mods": {"crit": 0.10, "crit_dmg": 0.30, "pierce": 1}}],
 			{"speed": 0.20, "area": 0.20},
 			{"cooldown": -0.10},
-			[{"name": "Focus Fire", "evo": "focus", "desc": "Every shot aims at the closest enemy.", "mods": {"pierce": 2}},
+			[{"name": "Focus Fire", "evo": "focus", "desc": "After a hit, a shot turns toward another enemy for as long as it has pierce left. It can go back and forth between two.", "mods": {"pierce": 2}},
 			 {"name": "Star Burst", "evo": "burst", "desc": "Doubles the projectile count.", "mods": {"bonus": 20, "wd": -5}},
-			 {"name": "Deadeye", "evo": "deadeye", "desc": "Crits ricochet to another enemy.", "mods": {"wd": 10, "crit": 0.10, "crit_dmg": 0.50, "cooldown": -0.10}}],
+			 {"name": "Deadeye", "evo": "deadeye", "desc": "A crit doesn't use up pierce.", "mods": {"wd": 10, "crit": 0.10, "crit_dmg": 0.50, "cooldown": -0.10}}],
 		],
 	},
 	"orbitals": {
 		"name": "Rods",
-		"desc": "Rods reach out from your corners and sweep around you.",
-		"base": {"damage": 11.0, "cooldown": 1.0, "count": 2, "speed": 2.6, "knockback": 90.0},
+		"desc": "Rods reach out from your body, evenly spaced, and sweep around you.",
+		"base": {"damage": 11.0, "cooldown": 1.0, "count": 2, "speed": 2.6},
 		"levels": [
 			{"count": 1},
 			{"area": 0.20, "wd": 4},
 			[{"name": "Extra Rod", "mods": {"count": 1, "wd": -3}},
 			 {"name": "Flywheel", "mods": {"speed": 0.25, "wd": 5}},
 			 {"name": "Long Reach", "mods": {"area": 0.25, "width": 0.20}}],
-			{"cooldown": -0.10},
+			{"speed": 0.10},
 			{"count": 1, "area": 0.10},
-			[{"name": "Buzzsaw", "mods": {"cooldown": -0.10, "speed": 0.20}},
+			[{"name": "Buzzsaw", "mods": {"speed": 0.30}},
 			 {"name": "Heavy Rods", "mods": {"wd": 7, "damage": 0.30, "width": 0.30}},
-			 {"name": "Battering Ram", "mods": {"knockback": 0.40, "area": 0.20, "bonus": 10}}],
+			 {"name": "Battering Ram", "mods": {"knockback": 80, "area": 0.20, "bonus": 10}}],
 			{"speed": 0.20, "area": 0.15},
-			{"cooldown": -0.10},
+			{"speed": 0.10},
 			[{"name": "Saturn", "evo": "saturn", "desc": "A second, longer set of rods spins the other way.", "mods": {}},
-			 {"name": "Aegis", "evo": "aegis", "desc": "Shorter rods that destroy enemy bullets (each block heals 0.5 HP). +50% weapon damage, double knockback.", "mods": {}},
+			 {"name": "Aegis", "evo": "aegis", "desc": "Shorter rods that destroy enemy bullets and hit 50% harder.", "mods": {"knockback": 90}},
 			 {"name": "Event Horizon", "evo": "horizon", "desc": "Rods drag nearby enemies in.", "mods": {"area": 0.25}}],
 		],
 	},
 	"pulse_ring": {
 		"name": "Pulse Ring",
 		"desc": "Emits an expanding ring that damages everything it crosses.",
-		"base": {"damage": 12.0, "cooldown": 2.2, "count": 1, "speed": 1.0, "knockback": 160.0},
+		"base": {"damage": 8.0, "cooldown": 2.2, "count": 1, "speed": 1.0},
 		"levels": [
 			{"wd": 5},
 			{"area": 0.20},
 			[{"name": "Quick Pulse", "mods": {"cooldown": -0.15}},
 			 {"name": "Wide Band", "mods": {"area": 0.25, "speed": 0.20}},
-			 {"name": "Hard Pulse", "mods": {"wd": 6, "knockback": 0.40}}],
+			 {"name": "Hard Pulse", "mods": {"crit": 0.10, "crit_dmg": 0.30}}],
 			{"cooldown": -0.10},
-			{"count": 1},
+			{"speed": 0.20, "wd": 5},
 			[{"name": "Steady Beat", "mods": {"cooldown": -0.10, "area": 0.15}},
 			 {"name": "Amplitude", "mods": {"wd": 8, "damage": 0.30}},
-			 {"name": "Sharp Wave", "mods": {"crit": 0.10, "crit_dmg": 0.30}}],
-			{"area": 0.20, "wd": 5},
+			 {"name": "Sharp Wave", "mods": {"crit": 0.20}}],
+			{"area": 0.30},
 			{"cooldown": -0.10},
-			[{"name": "Shockwave", "evo": "shockwave", "desc": "Rings slow enemies by 50% for 2s and deal 50% more weapon damage.", "mods": {}},
-			 {"name": "Metronome", "evo": "metronome", "desc": "Rapid pulses at 40% strength. Every 4th beat is a big ring that hits 2.2x as hard.", "mods": {}},
-			 {"name": "Implosion", "evo": "implosion", "desc": "Rings collapse inward from the edge, dragging enemies and all XP inside toward you.", "mods": {}}],
+			[{"name": "Double Pulse", "evo": "double", "desc": "Every pulse sends a second ring.", "mods": {"count": 1, "cooldown": 0.15}},
+			 {"name": "Repulsor", "evo": "repulsor", "desc": "Every 3rd ring knocks enemies back and wipes out the enemy bullets it crosses.", "mods": {}},
+			 {"name": "Tide", "evo": "tide", "desc": "The ring never fades: it sweeps in and out without stopping, hitting on every pass. Cooldown reduction makes it sweep much faster.", "mods": {}}],
 		],
 	},
 	"chain_arc": {
 		"name": "Chain Arc",
-		"desc": "A spark jumps between nearby enemies.",
-		"base": {"damage": 9.0, "cooldown": 1.3, "count": 1, "bounces": 2, "speed": 1.0, "knockback": 20.0},
+		"desc": "A spark jumps between nearby enemies, and can come back to one it already hit.",
+		"base": {"damage": 9.0, "cooldown": 1.3, "count": 1, "bounces": 2, "speed": 1.0},
 		"levels": [
 			{"bounces": 2},
 			{"wd": 5, "speed": 0.15},
@@ -180,18 +181,23 @@ const WEAPONS := {
 			{"cooldown": -0.10},
 			{"count": 1, "bounces": 1},
 			[{"name": "Overload", "mods": {"cooldown": -0.10, "count": 1}},
-			 {"name": "Conductor", "desc": "Halves the damage lost per jump.", "mods": {"wd": 7, "damage": 0.30, "falloff": -0.06}},
+			 {"name": "Conductor", "mods": {"wd": 7, "damage": 0.30}},
 			 {"name": "Far Reach", "mods": {"speed": 0.30, "bounces": 2, "bonus": 10}}],
 			{"bounces": 2, "speed": 0.20},
 			{"cooldown": -0.10},
-			[{"name": "Tesla Grid", "evo": "tesla", "desc": "No damage falloff, double jump range, fires 25% faster.", "mods": {}},
-			 {"name": "Thunderstorm", "evo": "storm", "desc": "Lightning strikes the enemies closest to you, each with a small blast.", "mods": {}},
-			 {"name": "Static Skin", "evo": "skin", "desc": "Shocks every enemy near you at once, and discharges whenever you get hit.", "mods": {}}],
+			[{"name": "Cascade", "evo": "cascade", "desc": "Each jump hits 12% harder than the one before.", "mods": {}},
+			 {"name": "Detonation", "evo": "detonate", "desc": "Sparks stop jumping and explode on their first target instead, 20% harder. Every jump you have makes the blast bigger.", "mods": {}},
+			 {"name": "Static Field", "evo": "field", "desc": "Enemy bullets miss you half the time, and every miss throws a spark at the enemies.", "mods": {"bullet_miss": 0.5, "max_hp_mult": 0.30}}],
 		],
 	},
 }
 const WEAPON_MAX_LEVEL := 10
-const CHAIN_FALLOFF := 0.12   # damage lost per jump
+const CASCADE_GAIN := 0.12        # Cascade: damage gained per jump
+const DETONATE_RADIUS := 60.0     # Detonation: blast radius with no jumps
+const DETONATE_PER_JUMP := 12.0   # ... and what each jump adds
+const DETONATE_K := 1.2
+const REPULSOR_EVERY := 3
+const REPULSOR_KNOCKBACK := 240.0
 
 # ---------------------------------------------------------------- passives
 # `levels[i]` is what level i+1 gives, in the same format as weapon levels. Milestones at 5 and 10.
@@ -226,10 +232,10 @@ const PASSIVES := {
 	"area": {"name": "Area", "desc": "Bigger attacks.", "levels": [
 		{"area": 0.08}, {"area": 0.08}, {"area": 0.08}, {"area": 0.08},
 		[{"name": "Expanse", "mods": {"area": 0.15}},
-		 {"name": "Impact", "mods": {"area": 0.08, "knockback": 0.20}}],
+		 {"name": "Impact", "mods": {"area": 0.08, "knockback": 40}}],
 		{"area": 0.08}, {"area": 0.08}, {"area": 0.08}, {"area": 0.08},
 		[{"name": "Vastness", "mods": {"area": 0.25}},
-		 {"name": "Undertow", "mods": {"area": 0.10, "pull": 1}},
+		 {"name": "Undertow", "mods": {"area": 0.10, "knockback": 60, "pull": 1}},
 		 {"name": "Chain Reaction", "mods": {"volatile": 0.15}}],
 	]},
 	"velocity": {"name": "Velocity", "desc": "Faster attacks: shots fly, rods spin, rings spread and arcs reach further.", "levels": [
@@ -283,7 +289,7 @@ const STAT_TEXT := {
 	"crit": ["%+d%% crit chance", "p"], "crit_dmg": ["%+d%% crit damage", "p"], "mult": ["%+d%% all damage", "p"],
 	"cooldown": ["%+d%% cooldown", "p"], "count": ["%+d projectile", "i"], "pierce": ["%+d pierce", "i"],
 	"bounces": ["%+d jumps", "i"], "area": ["%+d%% area", "p"], "width": ["%+d%% rod width", "p"],
-	"speed": ["%+d%% attack speed", "p"], "knockback": ["%+d%% knockback", "p"],
+	"speed": ["%+d%% attack speed", "p"], "knockback": ["%+d knockback", "i"],
 	"max_hp": ["%+d max HP", "i"], "regen": ["%+.1f HP/s", "f"], "armor": ["%+.1f armor", "f"],
 	"move": ["%+d%% move speed", "p"], "pickup": ["%+d%% pickup range", "p"], "xp": ["%+d%% XP", "p"],
 	"iframes": ["%+.1fs invulnerability after a hit", "f"],
@@ -291,7 +297,8 @@ const STAT_TEXT := {
 	"echo": ["Every %dth attack fires twice", "i"],
 	"hurt_haste": ["-%d%% cooldown for 3s after being hit", "p"],
 	"crit_arc": ["Crits arc to a nearby enemy for %d%% of the hit", "p"],
-	"pull": ["Hits pull enemies toward you instead of pushing them", "t"],
+	"pull": ["Knockback pulls enemies toward you instead of pushing them", "t"],
+	"max_hp_mult": ["%+d%% max HP", "p"],
 	"volatile": ["Kills have a %d%% chance to explode", "p"],
 	"split_kill": ["Kills throw 2 shards", "t"],
 	"hurt_shock": ["Being hit shocks nearby enemies", "t"],
@@ -303,10 +310,12 @@ const STAT_TEXT := {
 # Per-weapon wording for the stats that mean something different on each weapon.
 const WEAPON_WORDS := {
 	"vertex_shot": {"count": "%+d projectile", "area": "%+d%% projectile size", "speed": "%+d%% projectile speed"},
-	"orbitals": {"count": "%+d rod", "area": "%+d%% rod length", "speed": "%+d%% spin speed", "cooldown": "%+d%% sweep time"},
+	"orbitals": {"count": "%+d rod", "area": "%+d%% rod length", "speed": "%+d%% spin speed", "cooldown": "%+d%% spin speed"},
 	"pulse_ring": {"count": "%+d ring", "area": "%+d%% ring size", "speed": "%+d%% ring speed"},
 	"chain_arc": {"count": "%+d spark", "area": "%+d%% range and blast size", "speed": "%+d%% jump range"},
 }
+# Stats shown as their inverse: a rod has no cooldown, so cutting it reads as the spin it adds.
+const INVERTED_WORDS := {"orbitals": ["cooldown"]}
 
 
 ## Readable list of what a mods Dictionary does, worded for `weapon_id` ("" = generic).
@@ -318,6 +327,8 @@ static func mods_text(mods: Dictionary, weapon_id := "") -> String:
 			continue
 		var fmt: String = words.get(k, STAT_TEXT[k][0])
 		var v: float = mods[k]
+		if k in INVERTED_WORDS.get(weapon_id, []):
+			v = 1.0 / (1.0 + v) - 1.0
 		match STAT_TEXT[k][1]:
 			"p":
 				parts.append(fmt % roundi(v * 100.0))

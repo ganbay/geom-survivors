@@ -6,7 +6,9 @@ enum Kind { TRI, SHARD }
 
 const KIND_RADIUS := [8.0, 5.0]
 
-const F_RICOCHET := 1     # on a crit, redirect to a new enemy while bounce > 0
+const F_REDIRECT := 1     # Focus Fire: after a hit, turn toward another enemy while pierce is left
+const F_CRIT_PIERCE := 2  # Deadeye: a crit doesn't use up pierce
+const REDIRECT_RANGE := 280.0
 
 const HIT_MEM := 8        # remembered enemy uids per bullet
 
@@ -29,7 +31,6 @@ var knock := PackedFloat32Array()
 var pierce := PackedInt32Array()
 var kind := PackedInt32Array()
 var flags := PackedInt32Array()
-var bounce := PackedInt32Array()
 var src := PackedInt32Array()
 var hits := PackedInt32Array()      # HIT_MEM uids per bullet (ring buffer)
 var hit_pos := PackedInt32Array()
@@ -55,7 +56,7 @@ func setup(g: Game) -> void:
 
 func _resize(c: int) -> void:
 	_cap = c
-	for arr in ["x", "y", "vx", "vy", "life", "age", "dmg", "kf", "rad", "scl", "knock", "pierce", "kind", "flags", "bounce", "src", "hit_pos"]:
+	for arr in ["x", "y", "vx", "vy", "life", "age", "dmg", "kf", "rad", "scl", "knock", "pierce", "kind", "flags", "src", "hit_pos"]:
 		var a = get(arr)
 		a.resize(c)
 		set(arr, a)
@@ -90,7 +91,6 @@ func spawn(px: float, py: float, pvx: float, pvy: float, p_life: float, p_dmg: f
 	pierce[i] = p_pierce
 	kind[i] = p_kind
 	flags[i] = p_flags
-	bounce[i] = 0
 	src[i] = source
 	clear_hits(i)
 	return i
@@ -149,20 +149,22 @@ func update(delta: float) -> void:
 				if crit:
 					game.fx.crit_spark(x[i], y[i])
 				_add_hit(i, u)
-				if (flags[i] & F_RICOCHET) and crit and bounce[i] > 0:
-					bounce[i] -= 1
-					var skip := PackedInt32Array([u])
-					var t := en.nearest_to(x[i], y[i], 280.0, skip)  # reuses qbuf: must break after
+				if crit and (flags[i] & F_CRIT_PIERCE):
+					continue
+				if pierce[i] <= 0:
+					remove = true
+					break
+				pierce[i] -= 1
+				if flags[i] & F_REDIRECT:
+					# only the enemy just hit is off limits, so a shot can go back and forth between two
+					clear_hits(i)
+					_add_hit(i, u)
+					var t := en.nearest_to(x[i], y[i], REDIRECT_RANGE, PackedInt32Array([u]))  # reuses qbuf: must break after
 					if t >= 0:
 						var dir := Vector2(en.px[t] - x[i], en.py[t] - y[i]).normalized()
 						vx[i] = dir.x * sp
 						vy[i] = dir.y * sp
 						age[i] = 0.0
-						break
-				if pierce[i] > 0:
-					pierce[i] -= 1
-				else:
-					remove = true
 					break
 		if remove:
 			_remove(i)
@@ -188,7 +190,6 @@ func _remove(i: int) -> void:
 	pierce[i] = pierce[n]
 	kind[i] = kind[n]
 	flags[i] = flags[n]
-	bounce[i] = bounce[n]
 	src[i] = src[n]
 	hit_pos[i] = hit_pos[n]
 	for k in HIT_MEM:

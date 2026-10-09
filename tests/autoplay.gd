@@ -131,10 +131,7 @@ func _engage_range() -> float:
 		"orbitals":
 			return w.reach * 0.85
 		"pulse_ring":
-			return 170.0 * a * (0.75 if w.evo == "metronome" else 1.0) * 0.55
-		"chain_arc":
-			if w.evo == "skin":
-				return 210.0 * a * 0.6
+			return 170.0 * a * 0.55
 	return 170.0
 
 

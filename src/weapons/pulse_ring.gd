@@ -1,95 +1,110 @@
 extends Weapon
 ## Expanding ring around the Circle that hits everything it crosses once.
-## Level-10 forms: shockwave = Shockwave (slow + damage) · metronome = Metronome (fast beats, every 4th huge)
-##                 implosion = Implosion (ring collapses inward, dragging enemies and XP).
+## Level-10 forms: double = Double Pulse (a second ring per pulse, stats only) · repulsor = Repulsor (every 3rd
+##                 ring knocks back and wipes enemy bullets) · tide = Tide (one permanent ring sweeping in and out).
 
 const RADIUS := 170.0
+const GROW_TIME := 0.42  # seconds for a ring to reach full size at speed 1
 
-# each ring: [radius, max_radius, hit_uids(Dictionary), delay, k]
+# each ring: [radius, max_radius, hit_uids(Dictionary), delay, k, repulse]
 var rings: Array = []
-var beat := 0
+var fired := 0
+# Tide: the one ring that never fades
+var tide_r := 0.0
+var tide_out := true
+var tide_hit := {}
+var tide_k := 1.0
 
 
 func fire() -> void:
-	var count := int(s.count)
 	var max_r: float = RADIUS * s.area
-	var mult := 1.0
-	match evo:
-		"shockwave":
-			mult = 1.5
-		"metronome":
-			beat += 1
-			timer = cooldown() * 0.45
-			if beat % 4 == 0:
-				max_r *= 1.6
-				mult = 2.2
-				game.fx.shake(5.0)
-			else:
-				max_r *= 0.75
-				mult = 0.4
-		"implosion":
-			mult = 1.8
-			game.gems.magnetize_near(game.player.position.x, game.player.position.y, max_r * 1.2)
-	for i in count:
-		var start := max_r if evo == "implosion" else 0.0
-		rings.append([start, max_r, {}, i * 0.22, k(mult)])
-	Sfx.play("pulse", 1.4 if evo == "metronome" and beat % 4 != 0 else 1.0)
+	for i in int(s.count):
+		fired += 1
+		var repulse := evo == "repulsor" and fired % Balance.REPULSOR_EVERY == 0
+		rings.append([0.0, max_r, {}, i * 0.22, k(), repulse])
+	Sfx.play("pulse")
 
 
 func update(delta: float) -> void:
+	if evo == "tide":
+		_tide(delta)
+		return
 	super.update(delta)
 	var en := game.enemies
 	var p := game.player.position
-	var implode := evo == "implosion"
-	var kb: float = -absf(s.knockback) * 1.2 if implode else s.knockback
 	for i in range(rings.size() - 1, -1, -1):
 		var ring: Array = rings[i]
 		if ring[3] > 0.0:
 			ring[3] -= delta
 			continue
 		var max_r: float = ring[1]
-		var speed: float = max_r / 0.42 * s.speed
+		ring[0] += max_r / GROW_TIME * s.speed * delta
+		var r: float = ring[0]
+		var kb: float = Balance.REPULSOR_KNOCKBACK if ring[5] else s.knockback
+		if ring[5]:
+			game.hostile.destroy_near(p.x, p.y, r)
 		var hit_set: Dictionary = ring[2]
-		var done := false
-		var r: float
-		var c: int
-		if implode:
-			ring[0] -= speed * delta
-			r = maxf(ring[0], 0.0)
-			c = en.query(p.x, p.y, max_r)
-			done = ring[0] <= 0.0
-		else:
-			ring[0] += speed * delta
-			r = ring[0]
-			c = en.query(p.x, p.y, r)
-			done = r >= max_r
+		var c := en.query(p.x, p.y, r)
 		for q in c:
 			var j := en.qbuf[q]
 			var u := en.uid[j]
 			if hit_set.has(u):
 				continue
-			var dir := Vector2(en.px[j] - p.x, en.py[j] - p.y)
-			if implode and dir.length() < r - en.t_radius[en.typ[j]]:
-				continue  # the collapsing ring hasn't reached it yet
 			hit_set[u] = true
-			dir = dir.normalized()
+			var dir := Vector2(en.px[j] - p.x, en.py[j] - p.y).normalized()
 			strike(j, ring[4], dir.x * kb, dir.y * kb)
-			if evo == "shockwave":
-				en.slow[j] = 2.0
-		if done:
+		if r >= max_r:
 			rings.remove_at(i)
+
+
+## Tide: the ring sweeps out to full size and back in, forever. One pass takes half a cooldown at ring
+## speed 1, shortened again by how far the cooldown has been cut, so cooldown reduction counts twice.
+func _tide(delta: float) -> void:
+	var en := game.enemies
+	var p := game.player.position
+	var max_r: float = RADIUS * s.area
+	var cut: float = cooldown() / data.base.cooldown
+	var pass_time: float = maxf(cooldown() * 0.5 * cut / s.speed, 0.12)
+	var step := max_r / pass_time * delta
+	tide_r += step if tide_out else -step
+	if tide_r >= max_r or tide_r <= 0.0:
+		# turned around: a new pass counts as a new attack and can hit everyone again
+		tide_r = clampf(tide_r, 0.0, max_r)
+		tide_out = not tide_out
+		tide_hit.clear()
+		attacks += 1
+		tide_k = 2.0 if game.build.overcharge > 0 and attacks % game.build.overcharge == 0 else 1.0
+		if tide_out:
+			Sfx.play("pulse")
+	var c := en.query(p.x, p.y, max_r)
+	for q in c:
+		var j := en.qbuf[q]
+		var u := en.uid[j]
+		if tide_hit.has(u):
+			continue
+		var off := Vector2(en.px[j] - p.x, en.py[j] - p.y)
+		var d := off.length()
+		var er := en.t_radius[en.typ[j]]
+		# the ring has to have reached the enemy: from inside on the way out, from outside on the way in
+		if (tide_out and d - er > tide_r) or (not tide_out and d + er < tide_r):
+			continue
+		tide_hit[u] = true
+		var dir := off / maxf(d, 0.001)
+		strike(j, tide_k, dir.x * s.knockback, dir.y * s.knockback)
 
 
 func draw(ci: CanvasItem) -> void:
 	var p := game.player.position
 	var col := Balance.C_WEAPON.lerp(Color.WHITE, 0.3) if evolved else Balance.C_WEAPON
+	if evo == "tide":
+		Shapes.draw_neon_ring(ci, p, maxf(tide_r, 1.0), col, 5.0, 48)
+		return
 	for ring in rings:
 		if ring[3] > 0.0:
 			continue
-		var f: float = clampf(ring[0] / ring[1], 0.0, 1.0)
-		var fade := f if evo == "implosion" else 1.0 - f
-		var w := 3.0 + fade * 3.0 + (2.0 if ring[4] >= 2.0 else 0.0)
-		Shapes.draw_neon_ring(ci, p, maxf(ring[0], 1.0), Color(col, 0.3 + fade * 0.7), w, 48)
+		var fade: float = 1.0 - clampf(ring[0] / ring[1], 0.0, 1.0)
+		var w := 3.0 + fade * 3.0 + (3.0 if ring[5] else 0.0)
+		Shapes.draw_neon_ring(ci, p, maxf(ring[0], 1.0), Color(Color.WHITE if ring[5] else col, 0.3 + fade * 0.7), w, 48)
 
 
 func clear() -> void:

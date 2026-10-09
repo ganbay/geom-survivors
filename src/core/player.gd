@@ -74,14 +74,17 @@ func tip() -> Vector2:
 	return position + aim * (Balance.PLAYER_RADIUS + 2.0) if sides == 3 else position
 
 
-## World position of the pointy part closest to `target`: one of the Spark's two tips.
+## World position of the pointy part closest to `target`: one of the Spark's star points.
 func tip_near(target: Vector2) -> Vector2:
-	if character.get("shape", "") != "spark":
+	if sides >= 0:
 		return tip()
 	var pts := outline()
-	var a := position + pts[0]
-	var b := position + pts[3]
-	return a if a.distance_squared_to(target) < b.distance_squared_to(target) else b
+	var best := position + pts[0]
+	for i in range(2, pts.size(), 2):  # even indices are a star's outer points
+		var at := position + pts[i]
+		if at.distance_squared_to(target) < best.distance_squared_to(target):
+			best = at
+	return best
 
 
 func contact(dmg: float) -> void:

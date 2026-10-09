@@ -9,7 +9,7 @@ Open the project in Godot 4.7 and press F5, or run `godot --path .`. Drag anywhe
 ## Design at a glance
 
 - 15-minute runs with bosses at 5:00, 10:00 and 15:00. Each slot picks one of two bosses at random, and each boss has its own attack pattern: Tetragon Prime or Pentarch, then Hexcore or Octaprism, then The Polygon or The Singularity.
-- **One weapon per character.** Triangle fires Vertex Shot from its tip, Square sweeps Rods from its corners, Circle emits Pulse Rings, and Spark throws Chain Arcs from its tips.
+- **One weapon per character.** Triangle fires Vertex Shot from its tip, Square sweeps Rods from its corners, Circle emits Pulse Rings, and Spark (a four-point star) throws Chain Arcs from its points.
 - **Color-coded sides.** Each character owns one color (red, green, blue, yellow) for its body, attacks, XP and HUD. Everything hostile is violet to magenta.
 - **10-level upgrade trees.** The weapon and each passive have 10 levels. Weapon levels 4, 7 and 10 and passive levels 5 and 10 are milestones where you pick one of several options; the weapon's level-10 pick changes how it works.
 - 8 passives, 4 passive slots.

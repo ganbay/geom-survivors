@@ -82,7 +82,10 @@ func update(delta: float) -> void:
 		var rr := rad[i] + pr
 		var hit := ox * ox + oy * oy < rr * rr
 		if hit:
-			game.player.contact(dmg[i])
+			if randf() < game.build.stat("bullet_miss"):
+				game.on_bullet_missed()
+			else:
+				game.player.contact(dmg[i])
 		if hit or life[i] <= 0.0:
 			n -= 1
 			x[i] = x[n]

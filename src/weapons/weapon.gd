@@ -44,8 +44,8 @@ func recompute() -> void:
 		"width": maxf(0.3, 1.0 + b.stat("width")),
 		"speed": base.get("speed", 1.0) * maxf(0.3, 1.0 + b.stat("speed")),
 		"duration": base.get("duration", 1.0),
-		# Undertow flips every push into a pull
-		"knockback": base.get("knockback", 0.0) * maxf(0.0, 1.0 + b.stat("knockback")) * (-1.0 if b.stat("pull") > 0.0 else 1.0),
+		# weapons have no knockback of their own; Undertow flips every push into a pull
+		"knockback": maxf(0.0, b.stat("knockback")) * (-1.0 if b.stat("pull") > 0.0 else 1.0),
 	}
 
 
@@ -96,4 +96,9 @@ func clear() -> void:
 
 ## Called when the player takes a hit.
 func on_player_hurt() -> void:
+	pass
+
+
+## Called when an enemy bullet misses the player (Static Field).
+func on_bullet_missed() -> void:
 	pass

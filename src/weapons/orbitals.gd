@@ -1,13 +1,11 @@
 extends Weapon
-## Rods reach out from the Square's corners and sweep around it, hitting each enemy once per pass.
-## `area` is rod length; `speed` and cooldown reduction both make the rods sweep faster.
+## Rods reach out from the Square, evenly spaced, and sweep around it, hitting each enemy once per pass.
+## `area` is rod length; `speed` and cooldown reduction both add spin.
 ## Level-10 forms: saturn = Saturn (outer rods spinning the other way) · aegis = Aegis (short rods that eat
-##                 enemy bullets and heal) · horizon = Event Horizon (rods drag enemies in).
+##                 enemy bullets) · horizon = Event Horizon (rods drag enemies in).
 
 const LENGTH := 90.0
 const HALF_WIDTH := 7.0
-# Where rod k sits, in quarter turns from the first corner: the four corners, then the edge midpoints.
-const SLOTS := [0.0, 2.0, 1.0, 3.0, 0.5, 2.5, 1.5, 3.5]
 
 var angle := 0.0
 var rehit := {}  # enemy uid -> time when it can be hit again
@@ -31,11 +29,8 @@ func update(delta: float) -> void:
 	reach = inner + LENGTH * s.area * (0.75 if evo == "aegis" else 1.0)
 	rods.clear()
 	for i in count:
-		var on_slot := count <= SLOTS.size()
-		var dir := Vector2.from_angle(angle + (SLOTS[i] * PI * 0.5 if on_slot else TAU * i / count))
-		# an edge midpoint is closer to the centre than a corner
-		var from := inner * (0.71 if on_slot and i >= 4 else 1.0)
-		rods.append([p + dir * from, p + dir * reach])
+		var dir := Vector2.from_angle(angle + TAU * i / count)
+		rods.append([p + dir * inner * 0.8, p + dir * reach])
 	body_rods = rods.size()
 	if evo == "saturn":
 		for i in count:
@@ -48,7 +43,7 @@ func update(delta: float) -> void:
 	# an enemy can be hit again once the next rod is about to arrive
 	var cd := maxf(TAU / count / spin * 0.5, 0.05)
 	var hit_k := 1.5 if evo == "aegis" else 1.0
-	var kb: float = s.knockback * (2.0 if evo == "aegis" else 1.0)
+	var kb: float = s.knockback
 	for rod in rods:
 		var a: Vector2 = rod[0]
 		var ab: Vector2 = rod[1] - a
@@ -68,12 +63,9 @@ func update(delta: float) -> void:
 			var push := (e - p).normalized() * kb
 			_hit(j, hit_k, push)
 		if evo == "aegis":
-			var blocked := 0
 			for f in [0.2, 0.5, 0.8]:
 				var at: Vector2 = a + ab * f
-				blocked += game.hostile.destroy_near(at.x, at.y, half_w + 10.0)
-			if blocked > 0:
-				pl.heal(0.5 * blocked)
+				game.hostile.destroy_near(at.x, at.y, half_w + 10.0)
 	prune_t -= delta
 	if prune_t <= 0.0:
 		prune_t = 5.0
