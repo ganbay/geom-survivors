@@ -8,7 +8,7 @@ const MERGE_RADIUS := 90.0  # at the gem cap, a new drop joins an existing gem w
 
 var game: Game
 var batches: Array[ShapeBatch] = []
-var colors: Array[Color] = [Balance.C_XP, Balance.C_XP_BIG, Color(0.45, 1.0, 0.75), Color(1.0, 0.6, 0.7), Color(0.4, 0.6, 1.0), Balance.C_GOLD]
+var colors: Array[Color] = []
 
 var n := 0
 var x := PackedFloat32Array()
@@ -23,6 +23,8 @@ var t := 0.0
 
 func setup(g: Game) -> void:
 	game = g
+	# XP and the magnet wear the character's color; heals are white, cores gold
+	colors = [Balance.C_XP, Balance.C_XP_BIG, Balance.C_PLAYER, Balance.C_HEAL, Balance.C_PLAYER.lerp(Color.WHITE, 0.7), Balance.C_GOLD]
 	var meshes: Array[Mesh] = [
 		Shapes.poly_mesh(4, 5.0, 2.0, 4.0, 0.35),
 		Shapes.poly_mesh(4, 7.5, 2.5, 5.0, 0.35),

@@ -51,7 +51,7 @@ func destroy_near(px: float, py: float, r: float) -> int:
 		var rr := r + rad[i]
 		if ox * ox + oy * oy < rr * rr:
 			removed += 1
-			game.fx.burst(x[i], y[i], Color(1.0, 0.4, 0.3), 3, 4.0)
+			game.fx.burst(x[i], y[i], Balance.C_DANGER, 3, 4.0)
 			n -= 1
 			x[i] = x[n]
 			y[i] = y[n]
@@ -100,5 +100,5 @@ func render() -> void:
 	batch.begin()
 	var pulse := 0.8 + 0.2 * sin(Time.get_ticks_msec() * 0.02)
 	for i in n:
-		batch.add(x[i], y[i], 0.0, rad[i] / 7.0, Color(1.0, 0.3 * pulse, 0.15))
+		batch.add(x[i], y[i], 0.0, rad[i] / 7.0, Color(1.0, 0.15 + 0.3 * pulse, 0.8))
 	batch.commit()

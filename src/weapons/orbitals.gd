@@ -1,85 +1,102 @@
 extends Weapon
-## Circles orbit the player and hit what they touch; each enemy can be hit again after `cooldown` seconds.
-## Evolutions: velocity = Saturn (second ring) · radius = Event Horizon (wider ring, bigger orbiters + gravity)
-##             hull = Aegis (tight ring that eats enemy bullets and heals).
-## ORBIT resonance tier 2: every orbiter shoots a spark once per second.
+## Rods reach out from the Square's corners and sweep around it, hitting each enemy once per pass.
+## `area` is rod length; `speed` and cooldown reduction both make the rods sweep faster.
+## Level-10 forms: saturn = Saturn (outer rods spinning the other way) · aegis = Aegis (short rods that eat
+##                 enemy bullets and heal) · horizon = Event Horizon (rods drag enemies in).
+
+const LENGTH := 90.0
+const HALF_WIDTH := 7.0
+# Where rod k sits, in quarter turns from the first corner: the four corners, then the edge midpoints.
+const SLOTS := [0.0, 2.0, 1.0, 3.0, 0.5, 2.5, 1.5, 3.5]
 
 var angle := 0.0
 var rehit := {}  # enemy uid -> time when it can be hit again
 var prune_t := 5.0
-var spark_timer := 1.0
-var positions := PackedVector2Array()
-var r_ball := 12.0
+var rods: Array = []  # [from, to] in world space
+var body_rods := 0   # rods[0..body_rods) grow from the body; the rest are Saturn's outer set
+var half_w := HALF_WIDTH
+var reach := 0.0
 
 
 func update(delta: float) -> void:
-	angle += s.speed * delta * (1.3 if evo in ["hull", "velocity"] else 1.0)
-	var p := game.player.position
+	# a rod has no cooldown of its own: cutting it shortens the sweep instead
+	var spin: float = s.speed * data.base.cooldown / cooldown()
+	angle += spin * delta
+	var pl := game.player
+	pl.body_rot = angle
+	var p := pl.position
 	var count := int(s.count)
-	var r_orbit: float = 88.0 * s.area
-	r_ball = 12.0 * s.area
-	var kb: float = s.knockback
-	match evo:
-		"radius":
-			r_orbit *= 1.25
-			r_ball *= 1.6
-		"velocity":
-			r_ball *= 1.3
-		"hull":
-			r_orbit *= 0.72
-			r_ball *= 1.3
-			kb *= 2.0
-	positions.clear()
-	for k in count:
-		var a := angle + TAU * k / count
-		positions.append(p + Vector2(cos(a), sin(a)) * r_orbit)
-	if evo == "velocity":
-		for k in count + 2:
-			var a := -angle * 0.8 + TAU * (k + 0.5) / (count + 2)
-			positions.append(p + Vector2(cos(a), sin(a)) * r_orbit * 1.7)
+	half_w = HALF_WIDTH * s.width
+	var inner := Balance.PLAYER_RADIUS + 2.0
+	reach = inner + LENGTH * s.area * (0.75 if evo == "aegis" else 1.0)
+	rods.clear()
+	for i in count:
+		var on_slot := count <= SLOTS.size()
+		var dir := Vector2.from_angle(angle + (SLOTS[i] * PI * 0.5 if on_slot else TAU * i / count))
+		# an edge midpoint is closer to the centre than a corner
+		var from := inner * (0.71 if on_slot and i >= 4 else 1.0)
+		rods.append([p + dir * from, p + dir * reach])
+	body_rods = rods.size()
+	if evo == "saturn":
+		for i in count:
+			var dir := Vector2.from_angle(-angle * 0.8 + TAU * (i + 0.5) / count)
+			rods.append([p + dir * reach * 1.1, p + dir * reach * 1.8])
+	if evo == "horizon":
+		_gravity(p, delta)
 	var en := game.enemies
-	if evo == "radius":
-		_gravity(p, r_orbit, delta)
 	var now := game.time
-	var d: float = dmg() * {"hull": 1.5, "radius": 1.25}.get(evo, 1.0)
-	var cd: float = maxf(s.cooldown, 0.12)
-	for pos in positions:
-		var c := en.query(pos.x, pos.y, r_ball)
+	# an enemy can be hit again once the next rod is about to arrive
+	var cd := maxf(TAU / count / spin * 0.5, 0.05)
+	var hit_k := 1.5 if evo == "aegis" else 1.0
+	var kb: float = s.knockback * (2.0 if evo == "aegis" else 1.0)
+	for rod in rods:
+		var a: Vector2 = rod[0]
+		var ab: Vector2 = rod[1] - a
+		var len2 := ab.length_squared()
+		var mid := a + ab * 0.5
+		var c := en.query(mid.x, mid.y, sqrt(len2) * 0.5 + half_w)
 		for q in c:
 			var j := en.qbuf[q]
 			var u := en.uid[j]
 			if rehit.get(u, 0.0) > now:
 				continue
+			var e := Vector2(en.px[j], en.py[j])
+			var lim := half_w + en.t_radius[en.typ[j]]
+			if e.distance_squared_to(a + ab * clampf((e - a).dot(ab) / len2, 0.0, 1.0)) > lim * lim:
+				continue
 			rehit[u] = now + cd
-			var dir := Vector2(en.px[j] - p.x, en.py[j] - p.y).normalized()
-			var crit := randf() < game.build.crit
-			en.hit(j, d * (Balance.CRIT_MULT if crit else 1.0), dir.x * kb, dir.y * kb, display_name())
-		if evo == "hull":
-			var blocked := game.hostile.destroy_near(pos.x, pos.y, r_ball + 8.0)
+			var push := (e - p).normalized() * kb
+			_hit(j, hit_k, push)
+		if evo == "aegis":
+			var blocked := 0
+			for f in [0.2, 0.5, 0.8]:
+				var at: Vector2 = a + ab * f
+				blocked += game.hostile.destroy_near(at.x, at.y, half_w + 10.0)
 			if blocked > 0:
-				game.player.heal(0.5 * blocked)
+				pl.heal(0.5 * blocked)
 	prune_t -= delta
 	if prune_t <= 0.0:
 		prune_t = 5.0
 		for u in rehit.keys():
 			if rehit[u] < now:
 				rehit.erase(u)
-	if game.build.tier("ORBIT") >= 2:
-		spark_timer -= delta
-		if spark_timer <= 0.0:
-			spark_timer = 1.0
-			var targets := game.enemies.nearest_to_player(1, 500.0)
-			if targets.size() > 0:
-				var j := targets[0]
-				for pos in positions:
-					var dir := Vector2(game.enemies.px[j] - pos.x, game.enemies.py[j] - pos.y).normalized()
-					game.bullets.spawn(pos.x, pos.y, dir.x * 520.0, dir.y * 520.0, 1.0, dmg() * 0.5, Bullets.Kind.SPARK, src, 0, 0, 1.0, 20.0)
 
 
-## Event Horizon: enemies near the ring fall into it.
-func _gravity(p: Vector2, r_orbit: float, delta: float) -> void:
+## Rods have no attacks to count, so every hit counts as one for Overcharge and Double Tap.
+func _hit(j: int, hit_k: float, push: Vector2) -> void:
+	var b := game.build
+	attacks += 1
+	charged = b.overcharge > 0 and attacks % b.overcharge == 0
+	strike(j, k(hit_k), push.x, push.y)
+	charged = false
+	if b.echo > 0 and attacks % b.echo == 0 and not game.enemies.dead[j]:
+		strike(j, hit_k, push.x, push.y)
+
+
+## Event Horizon: enemies around the rods are dragged in until they're well inside the sweep.
+func _gravity(p: Vector2, delta: float) -> void:
 	var en := game.enemies
-	var c := en.query(p.x, p.y, r_orbit * 2.0)
+	var c := en.query(p.x, p.y, reach * 1.8)
 	for q in c:
 		var j := en.qbuf[q]
 		if en.is_boss(j):
@@ -87,22 +104,17 @@ func _gravity(p: Vector2, r_orbit: float, delta: float) -> void:
 		var ox := en.px[j] - p.x
 		var oy := en.py[j] - p.y
 		var d := sqrt(ox * ox + oy * oy) + 0.001
-		# pull toward the ring radius (from outside inward, from inside outward)
-		var toward := -signf(d - r_orbit)
+		if d < reach * 0.6:
+			continue
 		var pull := 1000.0 * delta / en.t_mass[en.typ[j]]
-		en.kx[j] += ox / d * pull * toward
-		en.ky[j] += oy / d * pull * toward
+		en.kx[j] -= ox / d * pull
+		en.ky[j] -= oy / d * pull
 
 
 func draw(ci: CanvasItem) -> void:
-	var col := Balance.C_WEAPON
-	match evo:
-		"velocity":
-			col = Color(0.6, 0.75, 1.0)
-		"radius":
-			col = Color(0.7, 0.55, 1.0)
-			Shapes.draw_neon_ring(ci, game.player.position, 88.0 * s.area * 1.25, Color(col, 0.15), 1.5, 48)
-		"hull":
-			col = Color(0.8, 1.0, 1.0)
-	for pos in positions:
-		Shapes.draw_neon_ring(ci, pos, r_ball, col, 2.5, 16)
+	var col := Balance.C_WEAPON.lerp(Color.WHITE, 0.3) if evolved else Balance.C_WEAPON
+	if evo == "horizon":
+		Shapes.draw_neon_ring(ci, game.player.position, reach * 1.8, Color(col, 0.15), 1.5, 48)
+	for i in rods.size():
+		var c := col if i < body_rods else Color(col, 0.7)
+		Shapes.draw_neon_line(ci, rods[i][0], rods[i][1], c, half_w)

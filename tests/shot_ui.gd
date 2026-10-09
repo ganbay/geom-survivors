@@ -1,7 +1,7 @@
 extends Node
 ## Captures the menu screens, pop-ups and in-run overlays at phone resolution (720x1280),
 ## using an in-memory save with sample history. Never writes the real save.
-## Usage: godot res://tests/shot_ui.tscn -- out=<dir> [size=720x1280]
+## Usage: godot res://tests/shot_ui.tscn -- out=<dir> [size=720x1280] [char=triangle]
 ## `size` is the stretched viewport: 720x1560 ≈ 19.5:9 phone, 960x1280 ≈ 3:4 tablet.
 ## `notch=1` fakes a 90px top cutout and a 60px bottom gesture bar.
 
@@ -12,6 +12,7 @@ var menu: Control
 var game: Game
 var tag := ""
 var size_arg := ""
+var char_id := "triangle"
 
 
 func _ready() -> void:
@@ -23,12 +24,17 @@ func _ready() -> void:
 			UI.force_insets = Vector4(0, 90, 0, 60)
 		elif a.begins_with("size="):
 			size_arg = a.substr(5)
+		elif a.begins_with("char="):
+			char_id = a.substr(5)
+	if char_id != "triangle":
+		tag = "_" + char_id
 	if size_arg != "":
-		tag = "_" + size_arg
+		tag += "_" + size_arg
 	if UI.force_insets != Vector4.ZERO:
 		tag += "_notch"
 	Save.read_only = true
 	Save.cfg = ConfigFile.new()
+	Save.run_config = {"character": char_id, "depth": 0}
 	Save.cfg.set_value("history", "runs", _sample_runs())
 	Save.cfg.set_value("best", "triangle", {"depth": 1, "time": 742.0, "won": false})
 	sv = SubViewport.new()
@@ -61,19 +67,27 @@ func _process(_d: float) -> void:
 			sv.add_child(game)
 		115:
 			game.god_mode = true
-			for id in ["line_laser", "orbitals", "pulse_ring"]:
-				game.build.add_weapon(id)
-			game.build.passives = {"radius": 3, "frequency": 2, "sides": 1}
-			game.build.recompute()
+			var b := game.build
+			var w := b.weapons[0]
+			w.level = 9
+			b.choices = {"%s:4" % w.id: 0, "%s:7" % w.id: 1, "damage:5": 1}
+			b.passives = {"damage": 6, "cooldown": 3, "area": 2}
+			b.recompute()
 		230:
 			_shot("ui_hud")
-		240:
+			var w := game.build.weapons[0]
+			game.on_offer_chosen({"kind": "weapon", "id": w.id, "level": 10, "new": false})
+		245:
+			_shot("ui_milestone")
+			game.on_offer_chosen(game.levelup.offers[0])
+		300:
+			_shot("ui_evolved")
 			game.open_pause()
-		255:
+		315:
 			_shot("ui_pause")
 			game.close_pause()
 			game._end_run(false)
-		275:
+		335:
 			_shot("ui_gameover")
 			get_tree().quit()
 
@@ -88,18 +102,15 @@ func _sample_runs() -> Array:
 	return [
 		{"ts": now - 1500, "result": "dead", "character": "triangle", "depth": 1, "time": 742.0, "level": 31, "kills": 6120,
 		 "damage_taken": 612.0, "weapons": [
-			{"id": "vertex_shot", "evo": "velocity", "name": "Railgun", "level": 6, "damage": 184000.0},
-			{"id": "line_laser", "evo": "", "name": "Line Laser", "level": 5, "damage": 96500.0},
-			{"id": "orbitals", "evo": "", "name": "Orbitals", "level": 3, "damage": 8100.0},
-			{"id": "pulse_ring", "evo": "", "name": "Pulse Ring", "level": 4, "damage": 41200.0}],
-		 "other_damage": {"Arc": 12300.0, "Fracture": 5100.0},
-		 "passives": {"velocity": 5, "radius": 3, "frequency": 2, "sides": 1}, "overclocks": ["glass"]},
+			{"id": "vertex_shot", "evo": "burst", "name": "Star Burst", "level": 10, "damage": 284000.0}],
+		 "other_damage": {"Arc": 12300.0, "Volatile": 5100.0},
+		 "passives": {"damage": 10, "cooldown": 6, "crit": 3, "magnet": 1}, "overclocks": ["glass"],
+		 "choices": {"vertex_shot:4": 0, "vertex_shot:7": 1, "vertex_shot:10": 1, "damage:5": 0, "damage:10": 2, "cooldown:5": 0}},
 		{"ts": now - 90000, "result": "win", "character": "square", "depth": 0, "time": 900.0, "level": 38, "kills": 9412,
 		 "damage_taken": 1204.0, "weapons": [
-			{"id": "orbitals", "evo": "velocity", "name": "Saturn", "level": 6, "damage": 220000.0},
-			{"id": "pulse_ring", "evo": "frequency", "name": "Metronome", "level": 6, "damage": 150000.0}],
-		 "other_damage": {}, "passives": {"velocity": 5, "frequency": 5}, "overclocks": []},
-		{"ts": now - 400000, "result": "quit", "character": "circle", "depth": 0, "time": 95.0, "level": 5, "kills": 180,
-		 "damage_taken": 20.0, "weapons": [{"id": "pulse_ring", "evo": "", "name": "Pulse Ring", "level": 3, "damage": 2400.0}],
-		 "other_damage": {}, "passives": {}, "overclocks": []},
+			{"id": "orbitals", "evo": "saturn", "name": "Saturn", "level": 10, "damage": 370000.0}],
+		 "other_damage": {}, "passives": {"velocity": 10, "hull": 8}, "overclocks": [], "choices": {}},
+		{"ts": now - 400000, "result": "quit", "character": "spark", "depth": 0, "time": 95.0, "level": 5, "kills": 180,
+		 "damage_taken": 20.0, "weapons": [{"id": "chain_arc", "evo": "", "name": "Chain Arc", "level": 3, "damage": 2400.0}],
+		 "other_damage": {}, "passives": {}, "overclocks": [], "choices": {}},
 	]

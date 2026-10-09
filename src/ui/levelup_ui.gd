@@ -9,7 +9,6 @@ var root: Control
 var title: Label
 var subtitle: Label
 var cards: VBoxContainer
-var res_row: HFlowContainer
 var tools: HBoxContainer
 var reroll_btn: Button
 var banish_btn: Button
@@ -34,11 +33,6 @@ func setup(g: Game) -> void:
 	col.add_child(title)
 	subtitle = UI.label("", 22, Balance.C_TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER)
 	col.add_child(subtitle)
-	res_row = HFlowContainer.new()
-	res_row.alignment = FlowContainer.ALIGNMENT_CENTER
-	res_row.add_theme_constant_override("h_separation", 8)
-	res_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	col.add_child(res_row)
 	cards = VBoxContainer.new()
 	cards.add_theme_constant_override("separation", 14)
 	col.add_child(cards)
@@ -74,14 +68,6 @@ func close() -> void:
 func _render() -> void:
 	for c in cards.get_children():
 		c.queue_free()
-	for c in res_row.get_children():
-		c.queue_free()
-	var counts := game.build.tag_counts
-	for tag in Balance.TAG_COLORS:
-		if counts.get(tag, 0) > 0:
-			var t := game.build.tier(tag)
-			var chip := UI.tag_chip("%s %d%s" % [tag, counts[tag], " ★".repeat(t)])
-			res_row.add_child(chip)
 	for o in offers:
 		cards.add_child(_card(o))
 	tools.visible = with_tools
@@ -101,38 +87,35 @@ func _card(o: Dictionary) -> PanelContainer:
 	var sub := ""
 	var desc := ""
 	var cost := ""
-	var tags: Array = []
 	var evolved := false
+	var wid: String = game.build.weapons[0].id
 	match o.kind:
-		"weapon":
-			var d: Dictionary = Balance.WEAPONS[o.id]
-			nm = d.name
-			sub = "NEW WEAPON" if o.new else "LV %d → %d" % [o.level - 1, o.level]
-			desc = d.desc if o.new else Weapon.level_text(o.id, o.level)
-			tags = d.tags
-		"passive":
-			var d: Dictionary = Balance.PASSIVES[o.id]
+		"weapon", "passive":
+			var d: Dictionary = Balance.WEAPONS[o.id] if o.kind == "weapon" else Balance.PASSIVES[o.id]
 			nm = d.name
 			sub = "NEW PASSIVE" if o.new else "LV %d → %d" % [o.level - 1, o.level]
-			desc = d.desc
-			tags = d.tags
-			accent = Color(0.6, 0.75, 1.0)
+			if not Build.level_options(o.kind, o.id, o.level).is_empty():
+				sub += "  ·  ★ MILESTONE"
+				accent = Balance.C_GOLD
+			elif o.kind == "passive":
+				accent = Balance.C_PASSIVE
+			desc = game.build.offer_text(o)
+		"option":
+			var opt: Dictionary = Build.level_options(o.item, o.id, o.level)[o.index]
+			var d: Dictionary = Balance.WEAPONS[o.id] if o.item == "weapon" else Balance.PASSIVES[o.id]
+			nm = opt.name
+			sub = "%s  ·  LV %d" % [d.name.to_upper(), o.level]
+			desc = Balance.option_text(opt, wid)
+			icon_kind = o.item
+			evolved = opt.has("evo")
+			accent = Balance.C_GOLD if evolved else (Balance.C_PLAYER if o.item == "weapon" else Balance.C_PASSIVE)
 		"overclock":
 			var d: Dictionary = Balance.OVERCLOCKS[o.id]
 			nm = d.name
 			sub = "OVERCLOCK · PERMANENT TRADE-OFF"
 			desc = "+ " + d.desc.trim_prefix("+")
 			cost = "− " + d.cost.trim_prefix("-")
-			accent = Color(1.0, 0.5, 0.2)
-		"evolve":
-			var d: Dictionary = Balance.WEAPONS[o.id]
-			var e: Dictionary = d.evolutions[o.passive]
-			nm = e.name
-			sub = "EVOLUTION · %s + %s  ·  CLAIMS %s" % [d.name.to_upper(), Balance.PASSIVES[o.passive].name.to_upper(), Balance.PASSIVES[o.passive].name.to_upper()]
-			desc = e.desc
-			accent = Balance.C_GOLD
-			icon_kind = "weapon"
-			evolved = true
+			accent = Balance.C_OVERCLOCK
 		"bonus":
 			nm = "Vent Core"
 			sub = "DECLINE THE OVERCLOCK"
@@ -174,20 +157,10 @@ func _card(o: Dictionary) -> PanelContainer:
 	top.add_theme_constant_override("h_separation", 8)
 	v.add_child(top)
 	top.add_child(UI.label(nm, 28, Color.WHITE))
-	for tag in tags:
-		top.add_child(UI.tag_chip(tag))
 	v.add_child(UI.label(sub, 17, accent))
 	v.add_child(UI.wrap_label(desc, 21, Balance.C_TEXT))
 	if cost != "":
 		v.add_child(UI.wrap_label(cost, 21, Color(1.0, 0.4, 0.35)))
-	if o.kind in ["weapon", "passive"]:
-		for h in game.build.offer_hints(o):
-			v.add_child(UI.wrap_label(h, 18, UI.hint_color(h)))
-	elif o.kind == "evolve":
-		# what this choice costs: the other weapons that also wanted this passive
-		for wid in Balance.WEAPONS:
-			if wid != o.id and Balance.WEAPONS[wid].evolutions.has(o.passive) and game.build.weapon(wid):
-				v.add_child(UI.wrap_label("✗ %s loses %s" % [Balance.WEAPONS[wid].name, Balance.WEAPONS[wid].evolutions[o.passive].name], 18, Color(1.0, 0.45, 0.4)))
 	return card
 
 
@@ -199,8 +172,8 @@ func _on_card(o: Dictionary) -> void:
 	if not _ready_for_input():
 		return
 	if banish_mode:
-		if not o.kind in ["weapon", "passive"]:
-			return  # evolutions and fallback cards can't be banished
+		if o.kind != "passive":
+			return  # only passives can be banished: the weapon is the build
 		banish_mode = false
 		game.build.banishes -= 1
 		game.build.banished[o.id] = true

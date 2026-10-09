@@ -610,7 +610,7 @@ func _trigger_hazard(h: Dictionary) -> void:
 	match h.kind:
 		"blast":
 			game.fx.ring(h.x, h.y, h.r, Balance.C_DANGER, 0.3, 5.0)
-			game.fx.burst(h.x, h.y, Color(1.0, 0.5, 0.2), 8, h.r * 0.5)
+			game.fx.burst(h.x, h.y, Balance.C_DANGER, 8, h.r * 0.5)
 			game.fx.shake(3.0)
 			if game.player.position.distance_to(Vector2(h.x, h.y)) < h.r + Balance.PLAYER_RADIUS * 0.5:
 				game.player.contact(h.dmg)

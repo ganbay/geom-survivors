@@ -14,6 +14,11 @@ static var _wide: FontVariation
 static var force_insets := Vector4.ZERO
 
 
+## Call after Balance.set_character(): the next theme() is rebuilt in the new player color.
+static func reset_theme() -> void:
+	_theme = null
+
+
 static func theme() -> Theme:
 	if _theme:
 		return _theme
@@ -25,7 +30,7 @@ static func theme() -> Theme:
 	t.default_font_size = 26
 	t.set_color("font_color", "Label", Balance.C_TEXT)
 
-	# default (secondary) buttons: dark glass with a cyan outline
+	# default (secondary) buttons: dark glass with an outline in the player color
 	var c := Balance.C_PLAYER
 	var normal := box(Color(c, 0.5), 0.0)
 	var hover := box(c, 0.1, 6.0)
@@ -45,10 +50,10 @@ static func theme() -> Theme:
 	t.set_type_variation(PRIMARY, "Button")
 	var p_normal := box(c, 1.0, 10.0)
 	p_normal.bg_color = Color(c, 0.9)
-	var p_hover := box(Color(0.7, 1.0, 1.0), 1.0, 16.0)
-	p_hover.bg_color = Color(0.55, 1.0, 1.0)
+	var p_hover := box(c.lerp(Color.WHITE, 0.5), 1.0, 16.0)
+	p_hover.bg_color = c.lerp(Color.WHITE, 0.35)
 	var p_pressed := box(c, 1.0, 22.0)
-	p_pressed.bg_color = Color(0.15, 0.7, 0.8)
+	p_pressed.bg_color = c.darkened(0.25)
 	for pair in [["normal", p_normal], ["hover", p_hover], ["pressed", p_pressed], ["focus", StyleBoxEmpty.new()]]:
 		t.set_stylebox(pair[0], PRIMARY, pair[1])
 	for k in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
@@ -209,26 +214,15 @@ static func meter(frac: float, color: Color, h := 6.0) -> Control:
 	return m
 
 
-## Outline of a player shape (sides 0 = circle), drawn at the control's center.
-static func shape_icon(sides: int, size: float, color: Color, fill := 0.15) -> Control:
+## Outline of a character's body (an entry of Balance.CHARACTERS), drawn at the control's center.
+static func shape_icon(character: Dictionary, size: float, color: Color, fill := 0.15) -> Control:
 	var c := Control.new()
 	c.custom_minimum_size = Vector2(size, size)
 	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	c.draw.connect(func():
-		var base := PI / 4.0 if sides == 4 else -PI / 2.0
-		Shapes.draw_neon_poly(c, Transform2D(0.0, c.size / 2.0) * Shapes.points(sides, size * 0.36, base), color, 2.5, fill))
+		var base := PI / 4.0 if character.sides == 4 else -PI / 2.0
+		Shapes.draw_neon_poly(c, Transform2D(0.0, c.size / 2.0) * Shapes.character_points(character, size * 0.36, base), color, 2.5, fill))
 	return c
-
-
-## Colors for build hint lines by their leading symbol.
-static func hint_color(h: String) -> Color:
-	if h.begins_with("★") or h.begins_with("✦"):
-		return Balance.C_GOLD
-	if h.begins_with("✓"):
-		return Balance.C_XP
-	if h.begins_with("✗"):
-		return Color(1.0, 0.45, 0.4)
-	return Balance.C_TEXT_DIM
 
 
 static func fmt_time(t: float) -> String:
@@ -319,17 +313,3 @@ static func scroll_body(parent: Control, sep := 8) -> VBoxContainer:
 	v.add_theme_constant_override("separation", sep)
 	sc.add_child(v)
 	return v
-
-
-static func tag_chip(tag: String) -> Label:
-	var c: Color = Balance.TAG_COLORS.get(tag, Balance.C_TEXT)
-	var l := label(tag, 16, c)
-	var sb := box(c, 0.12)
-	sb.corner_radius_top_left = 6
-	sb.corner_radius_bottom_right = 6
-	sb.set_border_width_all(1)
-	sb.set_content_margin_all(3)
-	sb.content_margin_left = 8
-	sb.content_margin_right = 8
-	l.add_theme_stylebox_override("normal", sb)
-	return l

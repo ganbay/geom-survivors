@@ -38,8 +38,11 @@ var levelup: LevelUpUI
 var pause_ui: PauseUI
 var gameover: GameOverUI
 
-var _arc_queue: Array = []  # CHAIN tier-2 arcs, resolved after all weapons fired
-var _blast_queue: Array = []  # Volatile Matter explosions, resolved the same way
+var _arc_queue: Array = []  # arcs (Arc Coil, Arc Crits), resolved after all weapons fired
+var _blast_queue: Array = []  # kill explosions, resolved the same way
+var _streak_kills := 0      # Bloodlust: kills toward the next trigger
+var _streak_t := 0.0        # Bloodlust: time left on the damage boost
+var _xp_pulse_t := 0.0      # Vacuum: time until the next pull
 var _frame_ema := 1.0 / 60.0
 var _slow_time := 0.0
 
@@ -50,6 +53,8 @@ func _ready() -> void:
 	depth_mods = _collect_depth_mods(depth)
 	Shapes.low_quality = Save.get_setting("low_quality", false)
 	RenderingServer.set_default_clear_color(Balance.C_BG)
+	Balance.set_character(character_id)
+	UI.reset_theme()
 
 	grid = GridBackground.new()
 	add_child(grid)
@@ -128,13 +133,19 @@ func view_radius() -> float:
 	return view_size().length() * 0.5
 
 
-func dynamic_damage_mult() -> float:
-	var m := 1.0
-	if build.anchor > 0.0 and player.is_still():
-		m += build.anchor
-	if build.redline > 0.0 and player.hp < build.max_hp * 0.5:
-		m += build.redline
-	return m
+## The damage multiplier term of the hit formula: 1 + permanent multipliers + situational ones.
+func damage_mult() -> float:
+	var b := build
+	var m := 1.0 + b.stat("mult")
+	if player.is_still():
+		m += b.stat("anchor") + b.stat("standing")
+	else:
+		m += b.stat("moving")
+	if player.hp < b.max_hp * 0.5:
+		m += b.stat("redline")
+	if _streak_t > 0.0:
+		m += b.stat("streak")
+	return maxf(m, 0.1)
 
 
 # ------------------------------------------------------------------ main loop
@@ -156,6 +167,7 @@ func _process(delta: float) -> void:
 		input = (kb + wasd).limit_length(1.0)
 		joystick.idle_hint = false
 	player.update(delta, input)
+	_update_timers(delta)
 
 	director.update(delta)
 	enemies.update(delta)
@@ -207,14 +219,35 @@ func _govern_performance(delta: float) -> void:
 
 # ------------------------------------------------------------------ combat hooks (called by systems)
 
+## Sources that never trigger kill or hit effects themselves, so those effects can't feed each other.
+const SECONDARY := ["Arc", "Volatile", "Shard", "Fracture", "Shock"]
+
+
+func _update_timers(delta: float) -> void:
+	_streak_t = maxf(0.0, _streak_t - delta)
+	build.haste_t = maxf(0.0, build.haste_t - delta)
+	var every := build.stat("xp_pulse")
+	if every > 0.0:
+		_xp_pulse_t += delta
+		if _xp_pulse_t >= every:
+			_xp_pulse_t = 0.0
+			gems.magnetize_near(player.position.x, player.position.y, view_radius())
+			fx.ring(player.position.x, player.position.y, view_radius() * 0.6, Color(Balance.C_XP, 0.5), 0.5, 2.0)
+
+
 func on_damage(amount: float, source: String) -> void:
 	damage_by[source] = damage_by.get(source, 0.0) + amount
 
 
 func on_hit(i: int, amount: float, source: String) -> void:
-	# CHAIN resonance tier 2: any hit may arc to a nearby enemy
-	if source != "Arc" and build.tier("CHAIN") >= 2 and randf() < 0.12:
-		_arc_queue.append([enemies.px[i], enemies.py[i], enemies.uid[i], amount * 0.5])
+	# Arc Coil: any hit may arc to a nearby enemy
+	if not source in SECONDARY and randf() < build.stat("arc"):
+		queue_arc(enemies.px[i], enemies.py[i], enemies.uid[i], amount * Balance.ARC_K)
+
+
+## An arc of `amount` damage from this point to the nearest enemy other than `skip_uid`.
+func queue_arc(x: float, y: float, skip_uid: int, amount: float) -> void:
+	_arc_queue.append([x, y, skip_uid, amount])
 
 
 func _process_arcs() -> void:
@@ -228,16 +261,16 @@ func _process_arcs() -> void:
 		if j >= 0:
 			var to := Vector2(enemies.px[j], enemies.py[j])
 			enemies.hit(j, a[3], 0.0, 0.0, "Arc")
-			fx.line(PackedVector2Array([Vector2(a[0], a[1]), to]), Balance.TAG_COLORS.CHAIN, 0.12, 2.0)
+			fx.line(PackedVector2Array([Vector2(a[0], a[1]), to]), Balance.C_WEAPON, 0.12, 2.0)
 	var blasts := _blast_queue
 	_blast_queue = []
-	var r := Balance.VOLATILE_RADIUS * build.area_mult
+	var r: float = Balance.VOLATILE_RADIUS * build.weapons[0].s.area
 	for b in blasts:
-		fx.ring(b.x, b.y, r, Color(1.0, 0.55, 0.2), 0.25, 3.0)
+		fx.ring(b.x, b.y, r, Balance.C_GOLD, 0.25, 3.0)
 		var c := enemies.query(b.x, b.y, r)
 		var hits := enemies.qbuf.slice(0, c)
 		for j in hits:
-			enemies.hit(j, b.dmg, 0.0, 0.0, "Volatile")
+			build.strike(j, build.weapons[0].s.damage, Balance.VOLATILE_K, 0.0, 0.0, "Volatile")
 
 
 func on_kill(x: float, y: float, source: String) -> void:
@@ -245,25 +278,56 @@ func on_kill(x: float, y: float, source: String) -> void:
 	Sfx.play("kill")
 	if build.lifesteal > 0.0:
 		player.heal(build.lifesteal)
-	# Volatile Matter: blasts are queued so a kill inside a blast doesn't recurse
-	if build.volatile > 0.0 and source != "Volatile" and _blast_queue.size() < 24 and randf() < build.volatile:
-		_blast_queue.append({"x": x, "y": y, "dmg": (8.0 + time / 60.0 * 2.0) * build.dmg_mult})
-	# FRACTURE resonance: kills burst into shards (shard kills only chain at tier 2)
-	var t := build.tier("FRACTURE")
-	if t > 0 and (source != "Fracture" or t >= 2):
-		if randf() < (0.30 if t >= 2 else 0.12):
-			shard_burst(x, y, 3)
+	if build.sum.has("streak"):
+		_streak_kills += 1
+		if _streak_kills >= Balance.STREAK_KILLS:
+			_streak_kills = 0
+			_streak_t = Balance.STREAK_TIME
+			hud.banner("BLOODLUST", Balance.C_PLAYER, 1.0)
+	if source in SECONDARY:
+		return
+	# kill explosions are queued so a kill inside a blast doesn't recurse
+	if _blast_queue.size() < 24 and randf() < build.stat("volatile"):
+		_blast_queue.append({"x": x, "y": y})
+	# Fracture Core: kills burst into shards
+	if randf() < build.stat("shards"):
+		shard_burst(x, y, 3, "Fracture")
+	# Splinter: two shards fly on past the kill, away from the player
+	if build.sum.has("split_kill"):
+		var away := (Vector2(x, y) - player.position).angle()
+		_shards(x, y, [away - 0.45, away + 0.45], "Shard")
 
 
-func shard_burst(x: float, y: float, count: int) -> void:
+func shard_burst(x: float, y: float, count: int, source: String) -> void:
+	var off := randf() * TAU
+	var angles := []
+	for i in count:
+		angles.append(off + TAU * i / count)
+	_shards(x, y, angles, source)
+
+
+func _shards(x: float, y: float, angles: Array, source: String) -> void:
 	if bullets.n > 400:
 		return
-	var src := bullets.source_id("Fracture")
-	var d := (6.0 + time / 60.0 * 1.5) * build.dmg_mult
-	var off := randf() * TAU
-	for k in count:
-		var a := off + TAU * k / count
-		bullets.spawn(x, y, cos(a) * 420.0, sin(a) * 420.0, 0.4, d, Bullets.Kind.SHARD, src, 1, 0, 1.0, 30.0)
+	var src := bullets.source_id(source)
+	var wd: float = build.weapons[0].s.damage
+	for a in angles:
+		bullets.spawn(x, y, cos(a) * 420.0, sin(a) * 420.0, 0.4, wd, Bullets.Kind.SHARD, src, 1, 0, 1.0, 30.0, Balance.SHARD_K)
+
+
+## Called after the player took a hit.
+func on_player_hurt() -> void:
+	if build.sum.has("hurt_haste"):
+		build.haste_t = Balance.HASTE_TIME
+	if build.sum.has("hurt_shock"):
+		# Reactive Plating
+		var p := player.position
+		fx.ring(p.x, p.y, Balance.SHOCK_RADIUS, Balance.C_WEAPON, 0.3, 4.0)
+		var c := enemies.query(p.x, p.y, Balance.SHOCK_RADIUS)
+		var hits := enemies.qbuf.slice(0, c)
+		for j in hits:
+			var dir := (Vector2(enemies.px[j], enemies.py[j]) - p).normalized()
+			build.strike(j, build.weapons[0].s.damage, Balance.SHOCK_K, dir.x * 200.0, dir.y * 200.0, "Shock")
 
 
 func on_boss_killed(id: String, x: float, y: float) -> void:
@@ -287,6 +351,8 @@ func on_core_collected() -> void:
 
 func add_xp(v: int) -> void:
 	Sfx.play("xp")
+	if build.sum.has("xp_heal"):
+		player.heal(build.stat("xp_heal"))
 	xp += maxi(1, roundi(v * build.xp_mult))
 	while xp >= xp_next:
 		xp -= xp_next
@@ -320,19 +386,23 @@ func _open_choice(title: String, sub: String, offers: Array, tools: bool, color:
 
 func on_offer_chosen(o: Dictionary) -> void:
 	match o.kind:
-		"evolve":
-			var w := build.weapon(o.id)
-			build.evolve(w, o.passive)
-			hud.banner(w.display_name().to_upper(), Balance.C_GOLD, 2.0)
-			fx.ring(player.position.x, player.position.y, 200.0, Balance.C_GOLD, 0.6, 5.0)
-			Sfx.play("evolve")
 		"bonus":
 			player.heal(build.max_hp * 0.3)
 			pending_levels += 1
 		"skip":
 			pass
 		_:
+			# a milestone level opens a second picker with its options before anything is applied
+			var options := build.make_option_offers(o)
+			if not options.is_empty():
+				var d: Dictionary = Balance.WEAPONS[o.id] if o.kind == "weapon" else Balance.PASSIVES[o.id]
+				_open_choice("%s LV %d" % [d.name.to_upper(), o.level], "choose one", options, false, Balance.C_GOLD)
+				return
 			build.apply_offer(o)
+			if o.kind == "option" and o.item == "weapon" and o.level == Balance.WEAPON_MAX_LEVEL:
+				hud.banner(build.weapon(o.id).display_name().to_upper(), Balance.C_GOLD, 2.0)
+				fx.ring(player.position.x, player.position.y, 200.0, Balance.C_GOLD, 0.6, 5.0)
+				Sfx.play("evolve")
 	levelup.close()
 	get_tree().paused = false
 	state = State.RUNNING
@@ -434,5 +504,5 @@ func history_entry(result: String) -> Dictionary:
 		"ts": int(Time.get_unix_time_from_system()), "result": result,
 		"character": character_id, "depth": depth, "time": time, "level": level, "kills": kills,
 		"damage_taken": damage_taken, "weapons": weapons, "other_damage": other,
-		"passives": build.passives.duplicate(), "overclocks": build.overclocks.duplicate(),
+		"passives": build.passives.duplicate(), "overclocks": build.overclocks.duplicate(), "choices": build.choices.duplicate(),
 	}

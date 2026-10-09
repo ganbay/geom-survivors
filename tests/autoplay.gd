@@ -2,6 +2,8 @@ extends Node
 ## Headless balance/perf harness. Plays a run with a simple bot.
 ## Usage: godot --headless --fixed-fps 60 res://tests/autoplay.tscn -- char=triangle depth=0 god=1 seconds=900 pick=smart
 ## boss=<id> forces every boss event to that boss (and spawns it right away with bossnow=1).
+## evo=<weapon>:<path> picks the character that owns the weapon and fixes its milestone picks: the path is the
+##   options taken at levels 4, 7 and 10, as letters (a-b-c). Path "-" stops at level 9 with the first options.
 ## bench=mob|single (with evo=...): no waves or events, the player walks a fixed circle, and the weapon faces
 ##   mob    = a steady horde of BENCH_MOBS dots (HP as at `start`), measured in kills/s
 ##   single = one unkillable, armorless, boss-sized dummy circling the player at 80-240px, measured in DPS
@@ -9,12 +11,12 @@ extends Node
 ##   clear  = CLEAR_HORDE enemies from the wave mix at `start` plus CLEAR_BOSSES, all at once; the bot plays normally
 ##            and the run stops when everything (splits and summons included) is dead: prints "CLEAR <seconds>".
 ##            The bot hunts (walks to the nearest enemy, then circles it) since god mode makes kiting pointless.
-##   real   = a normal run from 0:00 (no god mode) with evo=weapon:passive as the only weapon: the bot levels it,
-##            rushes the key passive, takes that evolution when offered (passive "-" = never evolve), fills the
-##            other passives normally and always vents cores for the heal. Prints "REAL ..." when the run ends.
-##            With start=<s> it jumps in mid-run already evolved (see _real_setup).
-## Example: godot --headless --fixed-fps 60 res://tests/autoplay.tscn -- char=circle evo=orbitals:hull bench=real seed=1
-## Example: godot --headless --fixed-fps 60 res://tests/autoplay.tscn -- evo=orbitals:hull bench=single start=480 seconds=60
+##   real   = a normal run from 0:00 (no god mode): the bot takes every weapon level, follows the path at its
+##            milestones, fills passives (first option at their milestones) and always vents cores for the heal.
+##            Prints "REAL ..." when the run ends. With start=<s> it jumps in mid-run at level 10 (see _real_setup).
+## core=1 opens an overclock core right away; core=2 opens the level-10 milestone picker (for screenshots).
+## Example: godot --headless --fixed-fps 60 res://tests/autoplay.tscn -- evo=orbitals:a-b-b bench=real seed=1
+## Example: godot --headless --fixed-fps 60 res://tests/autoplay.tscn -- evo=orbitals:a-b-b bench=single start=480 seconds=60
 
 var game: Game
 var args := {"char": "triangle", "depth": "0", "god": "0", "seconds": "900", "pick": "smart", "seed": "1", "shots": "", "out": "", "pause_at": "-1", "evo": "", "start": "0", "stand": "0", "name": "", "core": "0", "boss": "", "bossnow": "0", "bench": "", "targets": "10"}
@@ -36,8 +38,9 @@ var bosses_faced: PackedStringArray = []
 
 const BENCH_MOBS := 150
 const CLEAR_HORDE := 200
-const MID_RUN_LEVEL := 20  # bench=real with start>0: player level when jumping in
-const MID_RUN_PASSIVES := ["density", "hull", "frequency", "radius", "magnet"]  # filler at level 3, first three that fit
+const MID_RUN_LEVEL := 22  # bench=real with start>0: player level when jumping in
+const MID_RUN_PASSIVES := ["damage", "hull", "cooldown", "area"]  # at level 3 each
+const MILESTONES := [4, 7, 10]  # weapon levels the evo path picks for
 const CLEAR_BOSSES := ["boss_tetra", "boss_penta"]
 const DUMMY_TYPE := "brute"  # no AI or summons; resized to boss scale for bench=single
 const DUMMY_RADIUS := 52.0
@@ -53,6 +56,10 @@ func _ready() -> void:
 		var kv := a.split("=")
 		if kv.size() == 2:
 			args[kv[0]] = kv[1]
+	if args.evo != "":
+		for cid in Balance.CHARACTERS:
+			if Balance.CHARACTERS[cid].start == args.evo.split(":")[0]:
+				args.char = cid
 	Save.read_only = true
 	seed(int(args.seed))
 	for v in args.shots.split(",", false):
@@ -80,53 +87,54 @@ func _ready() -> void:
 		_bench_setup()
 
 
-## Real: swap the character's starting weapon for the tested one and play a full run.
+## Real: play a full run with the weapon following the evo path.
 func _real_setup() -> void:
 	var b := game.build
-	var id: String = args.evo.split(":")[0]
-	for w in b.weapons.duplicate():
-		b.weapons.erase(w)
-	b.add_weapon(id)
-	b.recompute()
 	args.seconds = "1200"  # the run ends on death or on the final boss
 	if float(args.start) > 0.0:
-		# jump in at the moment a player would evolve: weapon maxed, key passive maxed, evolved
-		# (base rows get Density maxed instead, so every row has the same passive budget)
-		var pid: String = args.evo.split(":")[1]
-		var key := pid if pid != "-" else "density"
-		var w := b.weapon(id)
-		w.level = Balance.WEAPON_MAX_LEVEL
-		b.passives[key] = Balance.PASSIVES[key].max
-		for extra in MID_RUN_PASSIVES:
-			if b.passives.size() < Balance.MAX_PASSIVES and not b.passives.has(extra):
-				b.passives[extra] = 3
+		# jump in with the weapon in its level-10 form and a few passives started
+		_set_path(args.evo.split(":")[1])
+		for id in MID_RUN_PASSIVES:
+			b.passives[id] = 3
 		b.recompute()
-		if pid != "-":
-			b.evolve(w, pid)
-			evolved_at = float(args.start)
+		evolved_at = float(args.start)
 		game.level = MID_RUN_LEVEL
 		game.xp_next = Balance.xp_needed(MID_RUN_LEVEL)
 		game.player.hp = b.max_hp
 
 
-## Real: the distance this build wants enemies at — ring weapons let them close in, shooters keep range.
+## Index of the option the evo path takes at a weapon milestone (0 when the path doesn't say).
+func _path_pick(level: int) -> int:
+	var letters: PackedStringArray = args.evo.split(":")[1].split("-")
+	var i := MILESTONES.find(level)
+	if i < 0 or i >= letters.size() or letters[i] == "":
+		return 0
+	return letters[i].unicode_at(0) - "a".unicode_at(0)
+
+
+## Puts the weapon at the end of its evo path: level 10, or level 9 for path "-".
+func _set_path(path: String) -> void:
+	var b := game.build
+	var w := b.weapons[0]
+	w.level = Balance.WEAPON_MAX_LEVEL - 1 if path == "-" else Balance.WEAPON_MAX_LEVEL
+	for lv in MILESTONES:
+		if lv <= w.level:
+			b.choices["%s:%d" % [w.id, lv]] = _path_pick(lv)
+	b.recompute()
+
+
+## Real: the distance this build wants enemies at — close-range weapons let them close in, shooters keep range.
 func _engage_range() -> float:
 	var w := game.build.weapons[0]
 	var a: float = w.s.area
 	match w.id:
 		"orbitals":
-			return 88.0 * a * {"radius": 1.25, "hull": 0.72}.get(w.evo, 1.0)
+			return w.reach * 0.85
 		"pulse_ring":
-			return 170.0 * a * (0.75 if w.evo == "frequency" else 1.0) * 0.55
+			return 170.0 * a * (0.75 if w.evo == "metronome" else 1.0) * 0.55
 		"chain_arc":
-			if w.evo == "hull":
+			if w.evo == "skin":
 				return 210.0 * a * 0.6
-		"line_laser":
-			if w.evo == "sides":
-				return 175.0 * a * 0.85
-		"mines":
-			if w.evo == "sides":
-				return 110.0
 	return 170.0
 
 
@@ -203,20 +211,18 @@ func _real_move() -> void:
 	game.joystick.output = (circle + seek + push).limit_length(1.0)
 
 
-## Real: offer scoring for a single-weapon run aiming at one evolution.
+## Real: offer scoring. The weapon always comes first and follows the evo path at its milestones.
 func _real_score(o: Dictionary) -> float:
-	var parts: PackedStringArray = args.evo.split(":")
 	match o.kind:
-		"evolve":
-			return 100.0 if o.id == parts[0] and o.passive == parts[1] else -100.0
 		"weapon":
-			return 10.0 if o.id == parts[0] else -100.0
+			if o.level == Balance.WEAPON_MAX_LEVEL and args.evo.ends_with(":-"):
+				return -100.0  # path "-": never take the level-10 form
+			return 10.0
+		"option":
+			if o.item == "weapon":
+				return 100.0 if o.index == _path_pick(o.level) else -100.0
+			return 5.0 if o.index == 0 else 1.0
 		"passive":
-			if o.id == parts[1]:
-				return 8.0 + randf()
-			var b := game.build
-			if o.new and parts[1] != "-" and not b.passives.has(parts[1]) and b.passives.size() >= Balance.MAX_PASSIVES - 1:
-				return -10.0  # keep the last slot for the key passive
 			return 3.0 + randf()
 		"bonus":
 			return 1.0
@@ -284,9 +290,7 @@ func _hunt() -> void:
 	var reach := en.t_radius[en.typ[best]] + 60.0
 	var w := game.build.weapons[0]
 	if w.id == "orbitals":
-		reach = 88.0 * w.s.area * {"radius": 1.25, "hull": 0.72}.get(w.evo, 1.0)
-	elif w.id == "line_laser" and w.evo == "sides":
-		reach = 175.0 * w.s.area * 0.9
+		reach = w.reach * 0.85
 	var dist := to.length()
 	if dist > reach + 15.0:
 		game.joystick.output = to.normalized()
@@ -341,38 +345,20 @@ func _bench_update() -> void:
 			en.ky[j] = 0.0
 
 
-## evo=weapon:passive -> max the weapon, add the passive, evolve (passive "-" = max level, unevolved).
+## evo=weapon:path -> put the weapon at the end of its path and freeze the build.
 func _force_evolution(spec: String) -> void:
-	var parts := spec.split(":")
 	var b := game.build
-	for w in b.weapons.duplicate():
-		if w.id != parts[0]:
-			b.weapons.erase(w)
-	if b.weapon(parts[0]) == null:
-		b.add_weapon(parts[0])
-	var w := b.weapon(parts[0])
-	w.level = Balance.WEAPON_MAX_LEVEL
-	if parts[1] != "-":
-		b.passives[parts[1]] = 1
-		b.recompute()
-		b.evolve(w, parts[1])
-	b.recompute()
+	_set_path(spec.split(":")[1])
 	b.rerolls = 0
 	game.god_mode = true
 	if args.core == "1":
-		# a second weapon that competes for the same key, plus all three keys, then a core
-		b.add_weapon("line_laser")
-		b.weapon("line_laser").level = Balance.WEAPON_MAX_LEVEL
-		for pid in w.data.evolutions:
-			b.passives[pid] = Balance.PASSIVES[pid].max
-		b.recompute()
 		game.pending_cores = 1
 	elif args.core == "2":
-		# evolutions ready: they should show up in the level-up pool
-		for pid in w.data.evolutions:
-			b.passives[pid] = Balance.PASSIVES[pid].max
+		var w := b.weapons[0]
+		w.level = Balance.WEAPON_MAX_LEVEL - 1
+		b.choices.erase("%s:%d" % [w.id, Balance.WEAPON_MAX_LEVEL])
 		b.recompute()
-		game.pending_levels = 1
+		game.on_offer_chosen({"kind": "weapon", "id": w.id, "level": Balance.WEAPON_MAX_LEVEL, "new": false})
 
 
 func _process(_delta: float) -> void:
@@ -483,13 +469,7 @@ func _pick() -> void:
 			if sc > best_score:
 				best_score = sc
 				best = o
-		# reroll level-ups (not cores) that offer nothing toward the target, like a player fishing for the key
-		var is_core := offers.any(func(o): return o.kind == "bonus")
-		if best_score < 5.0 and not is_core and game.build.rerolls > 0:
-			game.build.rerolls -= 1
-			game.levelup.offers = game.build.make_offers()
-			return
-		if best.kind == "evolve":
+		if best.kind == "option" and best.item == "weapon" and best.level == Balance.WEAPON_MAX_LEVEL:
 			evolved_at = game.time
 		game.on_offer_chosen(best)
 		return
@@ -498,13 +478,12 @@ func _pick() -> void:
 		return
 	var pick: Dictionary = offers[0]
 	if args.pick == "smart":
-		# prefer evolutions, then upgrades of owned weapons, then new weapons, then passives
+		# prefer the weapon, then passives; milestone options are picked at random
 		var best := -1.0
 		for o in offers:
 			var score := randf()
 			match o.kind:
-				"evolve": score += 100.0 + randf()
-				"weapon": score += 5.0 if not o.new else 3.0
+				"weapon": score += 5.0
 				"passive": score += 2.5 if not o.new else 2.0
 				"overclock": score += 1.5
 				"bonus": score += 1.0

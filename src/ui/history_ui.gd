@@ -116,7 +116,7 @@ func _row(i: int) -> PanelContainer:
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.add_child(h)
 	var ch: Dictionary = Balance.CHARACTERS.get(r.character, Balance.CHARACTERS.triangle)
-	h.add_child(UI.shape_icon(ch.sides, 52.0, col))
+	h.add_child(UI.shape_icon(ch, 52.0, col))
 	var v := VBoxContainer.new()
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	v.add_theme_constant_override("separation", 2)
@@ -167,7 +167,7 @@ static func build_report(body: VBoxContainer, r: Dictionary) -> void:
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 16)
 	body.add_child(head)
-	head.add_child(UI.shape_icon(ch.sides, 76.0, col, 0.2))
+	head.add_child(UI.shape_icon(ch, 76.0, col, 0.2))
 	var hv := VBoxContainer.new()
 	hv.add_theme_constant_override("separation", 0)
 	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -182,10 +182,11 @@ static func build_report(body: VBoxContainer, r: Dictionary) -> void:
 	for src in r.other_damage:
 		total += r.other_damage[src]
 	body.add_child(UI.stat_row([["SURVIVED", UI.fmt_time(r.time)], ["KILLS", UI.fmt_num(r.kills)], ["LEVEL", str(r.level)]], 8))
-	body.add_child(UI.stat_row([["DAMAGE", UI.fmt_num(total), Balance.C_PLAYER], ["DPS", UI.fmt_num(total / maxf(r.time, 1.0)), Balance.C_PLAYER],
-			["TAKEN", UI.fmt_num(r.damage_taken), Balance.C_HEAL]], 8))
+	var tint: Color = ch.color
+	body.add_child(UI.stat_row([["DAMAGE", UI.fmt_num(total), tint], ["DPS", UI.fmt_num(total / maxf(r.time, 1.0)), tint],
+			["TAKEN", UI.fmt_num(r.damage_taken), Balance.C_DANGER]], 8))
 
-	body.add_child(UI.header("WEAPONS  ·  DAMAGE DEALT"))
+	body.add_child(UI.header("DAMAGE DEALT"))
 	var top_dmg := 1.0
 	for w in r.weapons:
 		top_dmg = maxf(top_dmg, w.damage)
@@ -196,13 +197,11 @@ static func build_report(body: VBoxContainer, r: Dictionary) -> void:
 	for w in sorted:
 		body.add_child(_damage_row(ItemIcon.new("weapon", w.id, w.level, w.evo != "", 44.0),
 				"%s  LV%d" % [w.name, w.level], w.damage, total, top_dmg, r.time,
-				Balance.C_GOLD if w.evo != "" else Balance.C_WEAPON))
+				Balance.C_GOLD if w.evo != "" else tint))
 	for src in r.other_damage:
 		var d: float = r.other_damage[src]
-		var tag := "CHAIN" if src == "Arc" else ("FRACTURE" if src == "Fracture" else "")
-		var c: Color = Balance.TAG_COLORS.get(tag, Balance.C_TEXT_DIM)
-		var dot := UI.shape_icon(0, 44.0, c)
-		body.add_child(_damage_row(dot, src + "  (resonance)" if tag != "" else src, d, total, top_dmg, r.time, c))
+		var dot := UI.shape_icon(Balance.CHARACTERS.circle, 44.0, Balance.C_TEXT_DIM)
+		body.add_child(_damage_row(dot, src, d, total, top_dmg, r.time, Balance.C_TEXT_DIM))
 
 	if not r.passives.is_empty():
 		body.add_child(UI.header("PASSIVES"))
@@ -212,11 +211,11 @@ static func build_report(body: VBoxContainer, r: Dictionary) -> void:
 		for id in r.passives:
 			var item := HBoxContainer.new()
 			item.add_child(ItemIcon.new("passive", id, r.passives[id], false, 36.0))
-			item.add_child(UI.label("%s %d/%d" % [Balance.PASSIVES[id].name, r.passives[id], Balance.PASSIVES[id].max], 20))
+			item.add_child(UI.label("%s %d/%d" % [Balance.PASSIVES[id].name, r.passives[id], Balance.PASSIVE_MAX_LEVEL], 20))
 			flow.add_child(item)
 		body.add_child(flow)
 	if not r.overclocks.is_empty():
-		body.add_child(UI.header("OVERCLOCKS", Color(1.0, 0.55, 0.25)))
+		body.add_child(UI.header("OVERCLOCKS", Balance.C_OVERCLOCK))
 		for id in r.overclocks:
 			var oc: Dictionary = Balance.OVERCLOCKS[id]
 			var row := HBoxContainer.new()

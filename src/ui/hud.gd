@@ -28,7 +28,7 @@ func setup(g: Game) -> void:
 	# the damage flash covers the whole screen; everything else stays inside the safe area
 	hurt_rect = ColorRect.new()
 	hurt_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
-	hurt_rect.color = Color(1, 0.1, 0.15, 0.0)
+	hurt_rect.color = Color(Balance.C_DANGER, 0.0)
 	hurt_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hurt_rect)
 	UI.fit_safe_area(root)
@@ -122,7 +122,7 @@ func _draw_bars() -> void:
 	var w := bars.size.x
 	# XP bar
 	var frac := float(game.xp) / float(game.xp_next)
-	bars.draw_rect(Rect2(0, 0, w, 10), Color(0.05, 0.12, 0.08))
+	bars.draw_rect(Rect2(0, 0, w, 10), Color(Balance.C_XP.darkened(0.88), 1.0))
 	bars.draw_rect(Rect2(0, 0, w * frac, 10), Balance.C_XP)
 	bars.draw_rect(Rect2(0, 10, w * frac, 2), Color(Balance.C_XP, 0.35))
 	# build strip: weapons then passives, shapes gain sides with level
@@ -137,8 +137,9 @@ func _draw_bars() -> void:
 		var lv: int = game.build.passives[id]
 		var col := ItemIcon.icon_color("passive", false)
 		ItemIcon.draw_icon(bars, "passive", id, lv, false, Vector2(x + 13, y), 12.0, col, 2.0)
+		# level pips, two rows of five
 		for k in lv:
-			bars.draw_rect(Rect2(x + 3 + k * 4.5, y + 17, 3, 3), col)
+			bars.draw_rect(Rect2(x + 3 + (k % 5) * 4.5, y + 17 + (k / 5) * 4.5, 3, 3), col)
 		x += 32.0
 	# boss bar
 	var bi := game.enemies.boss_idx
@@ -146,6 +147,6 @@ func _draw_bars() -> void:
 		var bw := w * 0.7
 		var bx := (w - bw) / 2.0
 		var f := game.enemies.hp[bi] / game.enemies.mhp[bi]
-		bars.draw_rect(Rect2(bx, 184, bw, 12), Color(0.2, 0.03, 0.06))
+		bars.draw_rect(Rect2(bx, 184, bw, 12), Color(Balance.C_DANGER.darkened(0.85), 1.0))
 		bars.draw_rect(Rect2(bx, 184, bw * clampf(f, 0.0, 1.0), 12), Balance.C_DANGER)
 		bars.draw_rect(Rect2(bx, 184, bw, 12), Color(Balance.C_DANGER, 0.8), false, 2.0)

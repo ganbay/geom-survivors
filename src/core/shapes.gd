@@ -34,6 +34,21 @@ static func points(sides: int, radius: float, angle := -PI / 2.0) -> PackedVecto
 	return pts
 
 
+## Lightning-bolt outline for the Spark. Points 0 and 3 are its two tips; `angle` points tip 0.
+static func spark_points(radius: float, angle := -PI / 2.0) -> PackedVector2Array:
+	var xf := Transform2D(angle + PI / 2.0, Vector2.ZERO).scaled(Vector2(radius, radius))
+	return xf * PackedVector2Array([
+		Vector2(0.15, -1.0), Vector2(-0.55, 0.15), Vector2(-0.05, 0.15),
+		Vector2(-0.15, 1.0), Vector2(0.55, -0.15), Vector2(0.05, -0.15)])
+
+
+## Outline of a character's body (an entry of Balance.CHARACTERS). `angle` points its first corner.
+static func character_points(character: Dictionary, radius: float, angle := -PI / 2.0) -> PackedVector2Array:
+	if character.get("shape", "") == "spark":
+		return spark_points(radius * 1.3, angle)
+	return points(character.sides, radius, angle)
+
+
 ## Cross ("+") outline for heal pickups.
 static func cross_points(size: float) -> PackedVector2Array:
 	var a := size * 0.33

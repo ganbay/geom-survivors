@@ -3,6 +3,8 @@ extends Node
 
 const PATH := "user://save.cfg"
 const HISTORY_MAX := 60
+## Bumped when saved runs stop matching the game. 2 = one weapon per character (older history names removed items).
+const VERSION := 2
 
 var cfg := ConfigFile.new()
 ## Parameters for the next run, set by the menu.
@@ -13,6 +15,12 @@ var read_only := false
 
 func _init() -> void:
 	cfg.load(PATH)
+	if cfg.get_value("meta", "version", 1) < VERSION:
+		# best times and depth unlocks carry over; only the run history is dropped
+		if cfg.has_section("history"):
+			cfg.erase_section("history")
+		cfg.set_value("meta", "version", VERSION)
+		cfg.save(PATH)
 
 
 func get_setting(key: String, default: Variant) -> Variant:

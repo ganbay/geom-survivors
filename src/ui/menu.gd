@@ -13,6 +13,7 @@ var stat_meters := {}
 var depth_label: Label
 var depth_desc: Label
 var best_label: Label
+var title: Label
 var modal: Modal
 var bg: Control
 var t := 0.0
@@ -25,6 +26,11 @@ func _ready() -> void:
 	Shapes.low_quality = Save.get_setting("low_quality", false)
 	RenderingServer.set_default_clear_color(Balance.C_BG)
 	selected = Save.run_config.get("character", "triangle")
+	if not Balance.CHARACTERS.has(selected):
+		selected = "triangle"
+	Balance.set_character(selected)
+	UI.reset_theme()
+	theme = UI.theme()
 	depth = mini(Save.run_config.get("depth", 0), Save.depth_unlocked())
 
 	bg = Control.new()
@@ -36,10 +42,11 @@ func _ready() -> void:
 	for i in 14:
 		floaters.append([Vector2(randf(), randf()) * get_viewport_rect().size, Vector2(randf_range(-15, 15), randf_range(-25, -8)),
 				[0, 3, 4, 5, 6, -5].pick_random(), randf_range(10.0, 34.0), randf() * TAU, randf_range(-0.6, 0.6),
-				[Color(1.0, 0.25, 0.75), Color(1.0, 0.55, 0.15), Color(0.75, 0.4, 1.0), Balance.C_PLAYER].pick_random()])
+				[Color(1.0, 0.3, 0.85), Color(0.7, 0.45, 1.0), Color(0.85, 0.2, 0.7), Color(0.6, 0.35, 1.0)].pick_random()])
 
 	var col := UI.column(self, 16, 32)
-	col.add_child(UI.glow_label("GEOM", 104, Balance.C_PLAYER, HORIZONTAL_ALIGNMENT_CENTER, 14))
+	title = UI.glow_label("GEOM", 104, Balance.C_PLAYER, HORIZONTAL_ALIGNMENT_CENTER, 14)
+	col.add_child(title)
 	var sub := UI.glow_label("SURVIVORS", 34, Color(1.0, 0.3, 0.7), HORIZONTAL_ALIGNMENT_CENTER, 16)
 	col.add_child(sub)
 	col.add_child(_spacer(18))
@@ -101,12 +108,13 @@ func _char_card(id: String) -> Control:
 	icon.draw.connect(func():
 		var c := icon.size / 2.0 - Vector2(0, 14)
 		var on := selected == id
-		var col := Balance.C_PLAYER if on else Balance.C_TEXT_DIM
+		# every card wears its own character's color; the unselected ones are dimmed
+		var col: Color = d.color if on else Color(d.color, 0.45)
 		var rot := t * (0.8 if on else 0.0)
 		var base := PI / 4.0 if d.sides == 4 else -PI / 2.0
 		if on:
-			Shapes.draw_neon_ring(icon, c, 50.0 + sin(t * 3.0) * 2.0, Color(col, 0.25), 1.5)
-		Shapes.draw_neon_poly(icon, Transform2D(0.0, c) * Shapes.points(d.sides, 34.0, base + rot), col, 3.0, 0.18 if on else 0.05))
+			Shapes.draw_neon_ring(icon, c, 46.0 + sin(t * 3.0) * 2.0, Color(col, 0.25), 1.5)
+		Shapes.draw_neon_poly(icon, Transform2D(0.0, c) * Shapes.character_points(d, 30.0, base + rot), col, 3.0, 0.18 if on else 0.05))
 	b.add_child(icon)
 	var l := UI.label(d.name, 16, Balance.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
 	l.add_theme_font_override("font", UI.wide_font(3))
@@ -185,6 +193,12 @@ func _depth_panel() -> PanelContainer:
 func _select(id: String) -> void:
 	selected = id
 	var d: Dictionary = Balance.CHARACTERS[id]
+	# the whole menu takes the selected character's color
+	Balance.set_character(id)
+	UI.reset_theme()
+	theme = UI.theme()
+	title.add_theme_color_override("font_color", Balance.C_PLAYER)
+	title.add_theme_color_override("font_shadow_color", Color(Balance.C_PLAYER, 0.22))
 	char_name.text = d.name
 	char_desc.text = d.desc
 	for c in start_row.get_children():

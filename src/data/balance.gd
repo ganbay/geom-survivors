@@ -4,44 +4,47 @@ extends RefCounted
 ## Units: distances in pixels (screen is 720 wide), time in seconds.
 
 # ---------------------------------------------------------------- palette
-# Rule: cool colors = player side, warm colors = enemies, green = XP, gold = rare.
+# Rule: each character owns one color (body, shots, XP, HUD accent). Everything hostile sits in the
+# violet-to-magenta band, which no character uses. White = heal, gold = rare.
 const C_BG := Color(0, 0, 0)
 const C_GRID := Color(0.07, 0.08, 0.16)
 const C_GRID_MAJOR := Color(0.11, 0.12, 0.25)
-const C_PLAYER := Color(0.25, 0.95, 1.0)
-const C_WEAPON := Color(0.55, 0.95, 1.0)
-const C_XP := Color(0.3, 1.0, 0.45)
-const C_XP_BIG := Color(0.2, 0.9, 1.0)
-const C_HEAL := Color(1.0, 0.35, 0.45)
+const C_HEAL := Color(0.92, 1.0, 0.95)
 const C_GOLD := Color(1.0, 0.82, 0.3)
-const C_DANGER := Color(1.0, 0.18, 0.2)
+const C_DANGER := Color(1.0, 0.2, 0.75)
+const C_PASSIVE := Color(0.75, 0.8, 0.9)
+const C_OVERCLOCK := Color(1.0, 0.6, 0.2)
 const C_TEXT := Color(0.85, 0.95, 1.0)
 const C_TEXT_DIM := Color(0.5, 0.6, 0.75)
+# Set from the selected character by set_character().
+static var C_PLAYER := Color(1.0, 0.3, 0.25)
+static var C_WEAPON := Color(1.0, 0.55, 0.5)
+static var C_XP := Color(1.0, 0.7, 0.65)
+static var C_XP_BIG := Color(1.0, 0.45, 0.4)
 
-const TAG_COLORS := {
-	"VERTEX": Color(0.3, 0.95, 1.0),
-	"ORBIT": Color(0.5, 0.6, 1.0),
-	"PULSE": Color(0.3, 1.0, 0.7),
-	"CHAIN": Color(1.0, 0.9, 0.3),
-	"FRACTURE": Color(1.0, 0.5, 0.85),
-}
+
+## Switches the player-side colors to this character's.
+static func set_character(id: String) -> void:
+	var c: Color = CHARACTERS[id].color
+	C_PLAYER = c
+	C_WEAPON = c.lerp(Color.WHITE, 0.35)
+	C_XP = c.lerp(Color.WHITE, 0.55)
+	C_XP_BIG = c.lerp(Color.WHITE, 0.2)
 
 # ---------------------------------------------------------------- run
 const RUN_LENGTH := 900.0          # final boss spawns at 15:00
-const MAX_WEAPONS := 3
 const MAX_PASSIVES := 4
 const OFFER_COUNT := 3
 const REROLLS := 2
 const BANISHES := 1
 const SKIPS := 1
 # Level-up offer weights: things you already own show up far more often than new ones.
-const OFFER_W_OWNED_WEAPON := 2.6
+const OFFER_W_WEAPON := 2.6
 const OFFER_W_OWNED_PASSIVE := 2.0
-const OFFER_W_NEW_WEAPON := 0.6
 const OFFER_W_NEW_PASSIVE := 0.5
-const OFFER_W_EVOLUTION := 2.6        # an evolution whose weapon and key passive are both maxed
 const OVERCLOCK_CHOICES := 3           # overclock cards offered by a core (elite / boss drop)
-const CRIT_MULT := 2.0
+const CRIT_MULT := 2.0                 # crit damage before upgrades
+const COOLDOWN_FLOOR := 0.05
 const PLAYER_RADIUS := 16.0
 const PLAYER_IFRAMES := 0.5
 const GEM_MERGE_LIMIT := 260       # above this, new gems merge into existing ones
@@ -55,188 +58,335 @@ static func xp_needed(level: int) -> int:
 	return int(5.0 + level * 6.0 + level * level * 0.45 + pow(level, 3.0) * 0.012)
 
 # ---------------------------------------------------------------- characters
+# One weapon per character. `shape` overrides the regular polygon given by `sides`.
 const CHARACTERS := {
 	"triangle": {
-		"name": "TRIANGLE", "sides": 3,
+		"name": "TRIANGLE", "sides": 3, "color": Color(1.0, 0.3, 0.25),
 		"hp": 80.0, "speed": 235.0, "armor": 0.0, "crit": 0.10, "pickup": 90.0,
 		"start": "vertex_shot",
-		"desc": "Fast and fragile. +10% crit chance.",
+		"desc": "Fast and fragile. +10% crit chance. Shoots from its tip.",
 	},
 	"square": {
-		"name": "SQUARE", "sides": 4,
+		"name": "SQUARE", "sides": 4, "color": Color(0.3, 1.0, 0.45),
 		"hp": 130.0, "speed": 185.0, "armor": 2.0, "crit": 0.0, "pickup": 80.0,
-		"start": "pulse_ring",
-		"desc": "Slow and armored. Takes 2 less damage per hit.",
+		"start": "orbitals",
+		"desc": "Slow and armored. Takes 2 less damage per hit. Rods sweep from its corners.",
 	},
 	"circle": {
-		"name": "CIRCLE", "sides": 0,
+		"name": "CIRCLE", "sides": 0, "color": Color(0.3, 0.6, 1.0),
 		"hp": 100.0, "speed": 205.0, "armor": 0.0, "crit": 0.0, "pickup": 135.0,
-		"start": "orbitals",
-		"desc": "Balanced. Much larger pickup range.",
+		"start": "pulse_ring",
+		"desc": "Balanced. Much larger pickup range. Pulses in every direction.",
+	},
+	"spark": {
+		"name": "SPARK", "sides": 0, "shape": "spark", "color": Color(1.0, 0.9, 0.3),
+		"hp": 90.0, "speed": 215.0, "armor": 0.0, "crit": 0.05, "pickup": 100.0,
+		"start": "chain_arc",
+		"desc": "Quick and light. +5% crit chance. Lightning leaps from its tips.",
 	},
 }
+
+# ---------------------------------------------------------------- damage
+# hit = (weapon damage x k x attack damage x crit damage + bonus damage x k) x damage multiplier
+#   weapon damage  = the weapon's base `damage` + every "wd"
+#   attack damage  = 1 + every "damage"
+#   crit damage    = CRIT_MULT + every "crit_dmg", only on a crit
+#   bonus damage   = every "bonus"
+#   multiplier     = 1 + every "mult" + situational ones (anchor, redline, moving, streak)
+#   k              = sub-hit factor: 1 for a normal hit, less for weak secondary hits
+# cooldown = base x (1 + step) for every "cooldown" step, so -10% twice is x0.81.
 
 # ---------------------------------------------------------------- weapons
-# `base` = level 1 stats. `levels[i]` = deltas applied when reaching level i+2.
-# `evolutions`: passive id -> evolution. A max-level weapon + that passive at max level evolves at a core.
-# Each passive is the key for exactly 3 weapons, and is CLAIMED by the first weapon that uses it.
-# Stat keys: damage, cooldown, count, speed, pierce, area, duration, bounces, knockback
+# `base` = level 1 stats. `levels[i]` is what reaching level i+2 gives: a mods Dictionary, or at a
+# milestone an Array of options {name, mods, desc?, evo?} the player picks one of.
+# A level-10 option's `evo` switches the weapon script into that form.
 const WEAPONS := {
 	"vertex_shot": {
-		"name": "Vertex Shot", "tags": ["VERTEX"],
+		"name": "Vertex Shot",
 		"desc": "Fires triangles at the nearest enemies.",
-		"base": {"damage": 10.0, "cooldown": 0.7, "count": 1, "speed": 560.0, "pierce": 1, "area": 1.0, "duration": 1.1, "knockback": 60.0},
-		"levels": [{"count": 1}, {"damage": 4.0}, {"cooldown": -0.12}, {"count": 1, "pierce": 1}, {"damage": 6.0, "count": 1}],
-		"evolutions": {
-			"sides": {"name": "Star Burst", "desc": "Double projectile count, bonus projectiles included."},
-			"velocity": {"name": "Railgun", "desc": "Bigger shots that pierce everything, fly x2.2 faster and deal 60% more damage."},
-			"entropy": {"name": "Ricochet", "desc": "Shots bounce to a new enemy on every hit. 2 bounces, +1 per crit."},
-		},
+		"base": {"damage": 10.0, "cooldown": 0.7, "count": 1, "speed": 560.0, "pierce": 1, "duration": 1.1, "knockback": 60.0},
+		"levels": [
+			{"count": 1},
+			{"speed": 0.20, "wd": 5},
+			[{"name": "Volley", "mods": {"count": 2, "wd": -5}},
+			 {"name": "High Velocity", "mods": {"speed": 0.30, "wd": 5}},
+			 {"name": "Keen Edge", "mods": {"crit": 0.10, "crit_dmg": 0.20}}],
+			{"cooldown": -0.10},
+			{"count": 1, "pierce": 1},
+			[{"name": "Rapid Fire", "mods": {"cooldown": -0.10, "count": 1, "pierce": 1}},
+			 {"name": "Heavy Shot", "mods": {"wd": 7, "damage": 0.30, "area": 0.30}},
+			 {"name": "Precision", "mods": {"crit": 0.10, "crit_dmg": 0.30, "pierce": 1}}],
+			{"speed": 0.20, "area": 0.20},
+			{"cooldown": -0.10},
+			[{"name": "Focus Fire", "evo": "focus", "desc": "Every shot aims at the closest enemy.", "mods": {"pierce": 2}},
+			 {"name": "Star Burst", "evo": "burst", "desc": "Doubles the projectile count.", "mods": {"bonus": 20, "wd": -5}},
+			 {"name": "Deadeye", "evo": "deadeye", "desc": "Crits ricochet to another enemy.", "mods": {"wd": 10, "crit": 0.10, "crit_dmg": 0.50, "cooldown": -0.10}}],
+		],
 	},
 	"orbitals": {
-		"name": "Orbitals", "tags": ["ORBIT"],
-		"desc": "Circles orbit you, hitting whatever they touch.",
-		"base": {"damage": 11.0, "cooldown": 0.3, "count": 2, "speed": 2.6, "area": 1.0, "knockback": 90.0},
-		"levels": [{"count": 1}, {"damage": 4.0, "area": 0.15}, {"count": 1}, {"damage": 5.0, "speed": 0.5}, {"count": 1, "area": 0.2}],
-		"evolutions": {
-			"velocity": {"name": "Saturn", "desc": "Adds a larger outer ring spinning the other way. All orbiters grow and spin faster."},
-			"radius": {"name": "Event Horizon", "desc": "Ring grows 25% wider with bigger orbiters that hit 25% harder, and gravity drags nearby enemies into it."},
-			"hull": {"name": "Aegis", "desc": "Tight ring that destroys enemy bullets (each block heals 0.5 HP). +50% damage, double knockback."},
-		},
+		"name": "Rods",
+		"desc": "Rods reach out from your corners and sweep around you.",
+		"base": {"damage": 11.0, "cooldown": 1.0, "count": 2, "speed": 2.6, "knockback": 90.0},
+		"levels": [
+			{"count": 1},
+			{"area": 0.20, "wd": 4},
+			[{"name": "Extra Rod", "mods": {"count": 1, "wd": -3}},
+			 {"name": "Flywheel", "mods": {"speed": 0.25, "wd": 5}},
+			 {"name": "Long Reach", "mods": {"area": 0.25, "width": 0.20}}],
+			{"cooldown": -0.10},
+			{"count": 1, "area": 0.10},
+			[{"name": "Buzzsaw", "mods": {"cooldown": -0.10, "speed": 0.20}},
+			 {"name": "Heavy Rods", "mods": {"wd": 7, "damage": 0.30, "width": 0.30}},
+			 {"name": "Battering Ram", "mods": {"knockback": 0.40, "area": 0.20, "bonus": 10}}],
+			{"speed": 0.20, "area": 0.15},
+			{"cooldown": -0.10},
+			[{"name": "Saturn", "evo": "saturn", "desc": "A second, longer set of rods spins the other way.", "mods": {}},
+			 {"name": "Aegis", "evo": "aegis", "desc": "Shorter rods that destroy enemy bullets (each block heals 0.5 HP). +50% weapon damage, double knockback.", "mods": {}},
+			 {"name": "Event Horizon", "evo": "horizon", "desc": "Rods drag nearby enemies in.", "mods": {"area": 0.25}}],
+		],
 	},
 	"pulse_ring": {
-		"name": "Pulse Ring", "tags": ["PULSE"],
+		"name": "Pulse Ring",
 		"desc": "Emits an expanding ring that damages everything it crosses.",
-		"base": {"damage": 12.0, "cooldown": 2.2, "count": 1, "speed": 1.0, "area": 1.0, "knockback": 160.0},
-		"levels": [{"damage": 5.0}, {"area": 0.2}, {"cooldown": -0.35}, {"damage": 8.0, "area": 0.15}, {"count": 1}],
-		"evolutions": {
-			"radius": {"name": "Shockwave", "desc": "Rings slow enemies by 50% for 2s and deal 50% more damage."},
-			"frequency": {"name": "Metronome", "desc": "Rapid pulses at 40% strength. Every 4th beat is a big ring that hits 2.2x as hard."},
-			"magnet": {"name": "Implosion", "desc": "Rings collapse inward from the edge, dragging enemies and all XP inside toward you."},
-		},
-	},
-	"line_laser": {
-		"name": "Line Laser", "tags": ["VERTEX", "PULSE"],
-		"desc": "Fires a piercing beam at the closest enemy. Extra beams hit random nearby foes.",
-		"base": {"damage": 30.0, "cooldown": 1.2, "count": 1, "area": 1.0, "knockback": 30.0},
-		"levels": [{"damage": 8.0}, {"cooldown": -0.25}, {"area": 0.3}, {"count": 1}, {"damage": 14.0}],
-		"evolutions": {
-			"density": {"name": "Prism", "desc": "Each beam splits into a fan of three."},
-			"frequency": {"name": "Lighthouse", "desc": "Beams become permanent and sweep around you in a circle."},
-			"sides": {"name": "Polygon Cage", "desc": "Fires laser walls in a polygon around you. Enemies crossing them burn."},
-		},
+		"base": {"damage": 12.0, "cooldown": 2.2, "count": 1, "speed": 1.0, "knockback": 160.0},
+		"levels": [
+			{"wd": 5},
+			{"area": 0.20},
+			[{"name": "Quick Pulse", "mods": {"cooldown": -0.15}},
+			 {"name": "Wide Band", "mods": {"area": 0.25, "speed": 0.20}},
+			 {"name": "Hard Pulse", "mods": {"wd": 6, "knockback": 0.40}}],
+			{"cooldown": -0.10},
+			{"count": 1},
+			[{"name": "Steady Beat", "mods": {"cooldown": -0.10, "area": 0.15}},
+			 {"name": "Amplitude", "mods": {"wd": 8, "damage": 0.30}},
+			 {"name": "Sharp Wave", "mods": {"crit": 0.10, "crit_dmg": 0.30}}],
+			{"area": 0.20, "wd": 5},
+			{"cooldown": -0.10},
+			[{"name": "Shockwave", "evo": "shockwave", "desc": "Rings slow enemies by 50% for 2s and deal 50% more weapon damage.", "mods": {}},
+			 {"name": "Metronome", "evo": "metronome", "desc": "Rapid pulses at 40% strength. Every 4th beat is a big ring that hits 2.2x as hard.", "mods": {}},
+			 {"name": "Implosion", "evo": "implosion", "desc": "Rings collapse inward from the edge, dragging enemies and all XP inside toward you.", "mods": {}}],
+		],
 	},
 	"chain_arc": {
-		"name": "Chain Arc", "tags": ["CHAIN"],
+		"name": "Chain Arc",
 		"desc": "A spark jumps between nearby enemies.",
-		"base": {"damage": 9.0, "cooldown": 1.3, "count": 1, "bounces": 2, "area": 1.0, "knockback": 20.0},
-		"levels": [{"bounces": 2}, {"damage": 5.0}, {"count": 1}, {"bounces": 2, "cooldown": -0.2}, {"damage": 8.0, "count": 1}],
-		"evolutions": {
-			"frequency": {"name": "Tesla Grid", "desc": "No damage falloff, double jump range, fires 25% faster."},
-			"entropy": {"name": "Thunderstorm", "desc": "Lightning strikes the enemies closest to you, each with a small blast."},
-			"hull": {"name": "Static Skin", "desc": "Shocks every enemy near you at once, and discharges whenever you get hit."},
-		},
-	},
-	"boomerang": {
-		"name": "Rhombus", "tags": ["VERTEX", "ORBIT"],
-		"desc": "Throws rhombuses that fly out and come back, hitting on both passes.",
-		"base": {"damage": 14.0, "cooldown": 1.8, "count": 1, "speed": 480.0, "area": 1.0, "duration": 0.55, "knockback": 70.0},
-		"levels": [{"damage": 6.0}, {"count": 1}, {"area": 0.25}, {"damage": 8.0, "cooldown": -0.25}, {"count": 1}],
-		"evolutions": {
-			"magnet": {"name": "Möbius", "desc": "40% larger, flies out a second time and collects XP it passes."},
-			"velocity": {"name": "Ricochet Blade", "desc": "Rhombuses no longer return: they ricochet between enemies up to 8 times and bounce off the screen edges for 3.5s."},
-			"density": {"name": "Guillotine", "desc": "One giant, slow blade that grinds whatever it touches many times."},
-		},
-	},
-	"mines": {
-		"name": "Square Grenades", "tags": ["PULSE", "FRACTURE"],
-		"desc": "Lobs grenades at enemies that explode where they land.",
-		"base": {"damage": 30.0, "cooldown": 1.3, "count": 1, "area": 1.0, "duration": 8.0, "knockback": 200.0},
-		"levels": [{"damage": 12.0}, {"count": 1}, {"area": 0.25}, {"cooldown": -0.3, "damage": 12.0}, {"count": 1, "area": 0.2}],
-		"evolutions": {
-			"hull": {"name": "Fortress", "desc": "Grenades land as turrets that shoot nearby enemies for 6s."},
-			"density": {"name": "Singularity", "desc": "Throws one black-hole grenade: it pulls enemies in, then detonates for massive damage."},
-			"sides": {"name": "Minefield", "desc": "Stop throwing: leave a trail of small mines while moving instead. Explosions set off nearby mines."},
-		},
-	},
-	"fractal": {
-		"name": "Fractal Shot", "tags": ["VERTEX", "FRACTURE"],
-		"desc": "A slow shot that splits into three smaller shots when it hits.",
-		"base": {"damage": 18.0, "cooldown": 1.4, "count": 1, "speed": 340.0, "pierce": 0, "area": 1.0, "duration": 1.6, "bounces": 1, "knockback": 50.0},
-		"levels": [{"damage": 6.0}, {"bounces": 1}, {"count": 1}, {"damage": 8.0, "cooldown": -0.2}, {"bounces": 1}],
-		"evolutions": {
-			"entropy": {"name": "Mandelbrot", "desc": "Splits one extra time, hits 50% harder, and every shot, splits included, is a guaranteed crit."},
-			"radius": {"name": "Supernova", "desc": "The shot swells as it flies, then explodes in a big blast that scatters fragments."},
-			"magnet": {"name": "Attractor", "desc": "A homing vortex that pulls enemies into it, grinds them, then splits."},
-		},
+		"base": {"damage": 9.0, "cooldown": 1.3, "count": 1, "bounces": 2, "speed": 1.0, "knockback": 20.0},
+		"levels": [
+			{"bounces": 2},
+			{"wd": 5, "speed": 0.15},
+			[{"name": "Fork", "mods": {"count": 1, "wd": -3}},
+			 {"name": "Long Chain", "mods": {"bounces": 2, "wd": 5}},
+			 {"name": "Live Wire", "mods": {"crit": 0.10, "crit_dmg": 0.20}}],
+			{"cooldown": -0.10},
+			{"count": 1, "bounces": 1},
+			[{"name": "Overload", "mods": {"cooldown": -0.10, "count": 1}},
+			 {"name": "Conductor", "desc": "Halves the damage lost per jump.", "mods": {"wd": 7, "damage": 0.30, "falloff": -0.06}},
+			 {"name": "Far Reach", "mods": {"speed": 0.30, "bounces": 2, "bonus": 10}}],
+			{"bounces": 2, "speed": 0.20},
+			{"cooldown": -0.10},
+			[{"name": "Tesla Grid", "evo": "tesla", "desc": "No damage falloff, double jump range, fires 25% faster.", "mods": {}},
+			 {"name": "Thunderstorm", "evo": "storm", "desc": "Lightning strikes the enemies closest to you, each with a small blast.", "mods": {}},
+			 {"name": "Static Skin", "evo": "skin", "desc": "Shocks every enemy near you at once, and discharges whenever you get hit.", "mods": {}}],
+		],
 	},
 }
-const WEAPON_MAX_LEVEL := 6
+const WEAPON_MAX_LEVEL := 10
+const CHAIN_FALLOFF := 0.12   # damage lost per jump
 
 # ---------------------------------------------------------------- passives
-# `per_level` is added once per level.
+# `levels[i]` is what level i+1 gives, in the same format as weapon levels. Milestones at 5 and 10.
 const PASSIVES := {
-	"sides":     {"name": "Sides",     "tags": ["VERTEX"],   "max": 2, "per_level": {"count": 1},       "desc": "+1 projectile / orbiter / spark for every weapon except Pulse Ring."},
-	"radius":    {"name": "Radius",    "tags": ["PULSE"],    "max": 5, "per_level": {"area": 0.10},     "desc": "+10% area."},
-	"frequency": {"name": "Frequency", "tags": ["CHAIN"],    "max": 5, "per_level": {"cooldown": -0.07},"desc": "-7% cooldown."},
-	"velocity":  {"name": "Velocity",  "tags": ["ORBIT"],    "max": 5, "per_level": {"speed": 0.10, "duration": 0.10}, "desc": "+10% projectile speed and duration."},
-	"entropy":   {"name": "Entropy",   "tags": ["FRACTURE"], "max": 5, "per_level": {"crit": 0.06},     "desc": "+6% crit chance. Crits deal double damage."},
-	"density":   {"name": "Density",   "tags": [],           "max": 5, "per_level": {"damage": 0.10},   "desc": "+10% damage."},
-	"hull":      {"name": "Hull",      "tags": [],           "max": 5, "per_level": {"max_hp": 20.0, "regen": 0.25}, "desc": "+20 max HP, +0.25 HP/s regeneration."},
-	"magnet":    {"name": "Magnet",    "tags": [],           "max": 5, "per_level": {"pickup": 0.30, "xp": 0.05}, "desc": "+30% pickup range, +5% XP."},
+	"damage": {"name": "Damage", "desc": "More damage on every hit.", "levels": [
+		{"damage": 0.10}, {"damage": 0.10}, {"damage": 0.10}, {"damage": 0.10},
+		[{"name": "Power", "mods": {"damage": 0.30}},
+		 {"name": "Payload", "mods": {"bonus": 10}}],
+		{"damage": 0.20}, {"damage": 0.20}, {"damage": 0.20}, {"damage": 0.20},
+		[{"name": "Overwhelm", "mods": {"damage": 0.50}},
+		 {"name": "Warhead", "mods": {"bonus": 20}},
+		 {"name": "Bloodlust", "mods": {"streak": 0.30}}],
+	]},
+	"cooldown": {"name": "Cooldown", "desc": "Attack more often.", "levels": [
+		{"cooldown": -0.05}, {"cooldown": -0.05}, {"cooldown": -0.05}, {"cooldown": -0.05},
+		[{"name": "Tempo", "mods": {"cooldown": -0.09}},
+		 {"name": "Quickstep", "mods": {"cooldown": -0.05, "move": 0.08}}],
+		{"cooldown": -0.05}, {"cooldown": -0.05}, {"cooldown": -0.05}, {"cooldown": -0.05},
+		[{"name": "Frenzy", "mods": {"cooldown": -0.12}},
+		 {"name": "Double Tap", "mods": {"cooldown": -0.06, "echo": 5}},
+		 {"name": "Adrenaline", "mods": {"hurt_haste": 0.30}}],
+	]},
+	"crit": {"name": "Critical", "desc": "Crit more often, then crit harder.", "levels": [
+		{"crit": 0.05}, {"crit": 0.05}, {"crit": 0.05}, {"crit": 0.05},
+		[{"name": "Sharp Eye", "mods": {"crit": 0.07}},
+		 {"name": "Brutality", "mods": {"crit_dmg": 0.40}}],
+		{"crit_dmg": 0.25}, {"crit_dmg": 0.25}, {"crit_dmg": 0.25}, {"crit_dmg": 0.25},
+		[{"name": "Devastate", "mods": {"crit_dmg": 0.75}},
+		 {"name": "Marksman", "mods": {"crit": 0.10}},
+		 {"name": "Arc Crits", "mods": {"crit_arc": 0.50}}],
+	]},
+	"area": {"name": "Area", "desc": "Bigger attacks.", "levels": [
+		{"area": 0.08}, {"area": 0.08}, {"area": 0.08}, {"area": 0.08},
+		[{"name": "Expanse", "mods": {"area": 0.15}},
+		 {"name": "Impact", "mods": {"area": 0.08, "knockback": 0.20}}],
+		{"area": 0.08}, {"area": 0.08}, {"area": 0.08}, {"area": 0.08},
+		[{"name": "Vastness", "mods": {"area": 0.25}},
+		 {"name": "Undertow", "mods": {"area": 0.10, "pull": 1}},
+		 {"name": "Chain Reaction", "mods": {"volatile": 0.15}}],
+	]},
+	"velocity": {"name": "Velocity", "desc": "Faster attacks: shots fly, rods spin, rings spread and arcs reach further.", "levels": [
+		{"speed": 0.08}, {"speed": 0.08}, {"speed": 0.08}, {"speed": 0.08},
+		[{"name": "Rush", "mods": {"speed": 0.15}},
+		 {"name": "Stride", "mods": {"speed": 0.08, "move": 0.05}}],
+		{"speed": 0.08}, {"speed": 0.08}, {"speed": 0.08}, {"speed": 0.08},
+		[{"name": "Hypersonic", "mods": {"speed": 0.25}},
+		 {"name": "Splinter", "mods": {"split_kill": 1}},
+		 {"name": "Tailwind", "mods": {"speed": 0.10, "move": 0.10}}],
+	]},
+	"hull": {"name": "Hull", "desc": "More HP and regeneration.", "levels": [
+		{"max_hp": 15.0, "regen": 0.2}, {"max_hp": 15.0, "regen": 0.2}, {"max_hp": 15.0, "regen": 0.2}, {"max_hp": 15.0, "regen": 0.2},
+		[{"name": "Bulk", "mods": {"max_hp": 40.0}},
+		 {"name": "Plating", "mods": {"armor": 1.5}}],
+		{"max_hp": 15.0, "regen": 0.2}, {"max_hp": 15.0, "regen": 0.2}, {"max_hp": 15.0, "regen": 0.2}, {"max_hp": 15.0, "regen": 0.2},
+		[{"name": "Colossus", "mods": {"max_hp": 60.0}},
+		 {"name": "Bastion", "mods": {"armor": 3.0}},
+		 {"name": "Reactive Plating", "mods": {"hurt_shock": 1}}],
+	]},
+	"magnet": {"name": "Magnet", "desc": "Longer pickup range and more XP.", "levels": [
+		{"pickup": 0.20, "xp": 0.03}, {"pickup": 0.20, "xp": 0.03}, {"pickup": 0.20, "xp": 0.03}, {"pickup": 0.20, "xp": 0.03},
+		[{"name": "Long Arm", "mods": {"pickup": 0.40}},
+		 {"name": "Scholar", "mods": {"xp": 0.10}}],
+		{"pickup": 0.20, "xp": 0.03}, {"pickup": 0.20, "xp": 0.03}, {"pickup": 0.20, "xp": 0.03}, {"pickup": 0.20, "xp": 0.03},
+		[{"name": "Savant", "mods": {"xp": 0.15}},
+		 {"name": "Vacuum", "mods": {"xp_pulse": 30}},
+		 {"name": "Recycler", "mods": {"xp_heal": 0.2}}],
+	]},
+	"agility": {"name": "Agility", "desc": "Move faster.", "levels": [
+		{"move": 0.03}, {"move": 0.03}, {"move": 0.03}, {"move": 0.03},
+		[{"name": "Sprint", "mods": {"move": 0.06}},
+		 {"name": "Afterimage", "mods": {"iframes": 0.1}}],
+		{"move": 0.03}, {"move": 0.03}, {"move": 0.03}, {"move": 0.03},
+		[{"name": "Dash", "mods": {"move": 0.10}},
+		 {"name": "Running Start", "mods": {"moving": 0.20}},
+		 {"name": "Blur", "mods": {"dodge": 0.10}}],
+	]},
+}
+const PASSIVE_MAX_LEVEL := 10
+const STREAK_KILLS := 100     # Bloodlust: kills needed to trigger
+const STREAK_TIME := 5.0
+const HASTE_TIME := 3.0       # Adrenaline: how long the cooldown cut lasts after a hit
+const SHOCK_RADIUS := 200.0   # Reactive Plating
+const SHOCK_K := 3.0
+
+# ---------------------------------------------------------------- upgrade text
+# stat key -> [format, kind]. kind: "i" flat number, "p" percent, "f" one decimal, "t" fixed text with one number.
+const STAT_TEXT := {
+	"wd": ["%+d weapon damage", "i"], "damage": ["%+d%% damage", "p"], "bonus": ["%+d bonus damage", "i"],
+	"crit": ["%+d%% crit chance", "p"], "crit_dmg": ["%+d%% crit damage", "p"], "mult": ["%+d%% all damage", "p"],
+	"cooldown": ["%+d%% cooldown", "p"], "count": ["%+d projectile", "i"], "pierce": ["%+d pierce", "i"],
+	"bounces": ["%+d jumps", "i"], "area": ["%+d%% area", "p"], "width": ["%+d%% rod width", "p"],
+	"speed": ["%+d%% attack speed", "p"], "knockback": ["%+d%% knockback", "p"],
+	"max_hp": ["%+d max HP", "i"], "regen": ["%+.1f HP/s", "f"], "armor": ["%+.1f armor", "f"],
+	"move": ["%+d%% move speed", "p"], "pickup": ["%+d%% pickup range", "p"], "xp": ["%+d%% XP", "p"],
+	"iframes": ["%+.1fs invulnerability after a hit", "f"],
+	"streak": ["Every 100 kills: +%d%% all damage for 5s", "p"],
+	"echo": ["Every %dth attack fires twice", "i"],
+	"hurt_haste": ["-%d%% cooldown for 3s after being hit", "p"],
+	"crit_arc": ["Crits arc to a nearby enemy for %d%% of the hit", "p"],
+	"pull": ["Hits pull enemies toward you instead of pushing them", "t"],
+	"volatile": ["Kills have a %d%% chance to explode", "p"],
+	"split_kill": ["Kills throw 2 shards", "t"],
+	"hurt_shock": ["Being hit shocks nearby enemies", "t"],
+	"xp_pulse": ["Every %ds, pulls in all XP on screen", "i"],
+	"xp_heal": ["XP pickups heal %.1f HP", "f"],
+	"moving": ["+%d%% all damage while moving", "p"],
+	"dodge": ["%d%% chance to dodge a hit", "p"],
+}
+# Per-weapon wording for the stats that mean something different on each weapon.
+const WEAPON_WORDS := {
+	"vertex_shot": {"count": "%+d projectile", "area": "%+d%% projectile size", "speed": "%+d%% projectile speed"},
+	"orbitals": {"count": "%+d rod", "area": "%+d%% rod length", "speed": "%+d%% spin speed", "cooldown": "%+d%% sweep time"},
+	"pulse_ring": {"count": "%+d ring", "area": "%+d%% ring size", "speed": "%+d%% ring speed"},
+	"chain_arc": {"count": "%+d spark", "area": "%+d%% range and blast size", "speed": "%+d%% jump range"},
 }
 
-# ---------------------------------------------------------------- resonance
-# Each item counts once per tag it carries (weapons AND passives).
-const RESONANCE_THRESHOLDS := [2, 4]
-const RESONANCE := {
-	"VERTEX":   ["VERTEX projectiles pierce +1.", "VERTEX projectiles split into 2 shards on kill."],
-	"ORBIT":    ["ORBIT weapons get +1 orbiter / rhombus.", "Orbitals fire a spark at the nearest enemy every second."],
-	"PULSE":    ["PULSE weapons get +20% area.", "PULSE hits pull enemies toward their center."],
-	"CHAIN":    ["CHAIN sparks jump +2 more times.", "Any hit has a 12% chance to arc to a nearby enemy."],
-	"FRACTURE": ["Kills have a 12% chance to burst into 3 shards.", "Burst chance 30%. Shard kills can burst again."],
-}
+
+## Readable list of what a mods Dictionary does, worded for `weapon_id` ("" = generic).
+static func mods_text(mods: Dictionary, weapon_id := "") -> String:
+	var parts: PackedStringArray = []
+	var words: Dictionary = WEAPON_WORDS.get(weapon_id, {})
+	for k in mods:
+		if not STAT_TEXT.has(k):
+			continue
+		var fmt: String = words.get(k, STAT_TEXT[k][0])
+		var v: float = mods[k]
+		match STAT_TEXT[k][1]:
+			"p":
+				parts.append(fmt % roundi(v * 100.0))
+			"i":
+				parts.append(fmt % int(v))
+			"f":
+				parts.append(fmt % v)
+			_:
+				parts.append(fmt)
+	return ", ".join(parts)
+
+
+## Card text for one milestone option.
+static func option_text(opt: Dictionary, weapon_id := "") -> String:
+	var stats := mods_text(opt.get("mods", {}), weapon_id)
+	if opt.has("desc"):
+		return opt.desc if stats == "" else "%s %s." % [opt.desc, stats]
+	return stats + "."
 
 # ---------------------------------------------------------------- overclocks
 # Powerful trade-offs, offered only by cores (dropped by elites and bosses). Each can be taken once per run.
+# `weapons` limits an overclock to the weapons it does something for.
 const OVERCLOCKS := {
-	"glass":    {"name": "Glass Core",     "desc": "+40% damage.",                 "cost": "-30% max HP.",                "mods": {"damage": 0.40, "max_hp_mult": -0.30}},
+	"glass":    {"name": "Glass Core",     "desc": "+30% all damage.",             "cost": "-30% max HP.",                "mods": {"mult": 0.30, "max_hp_mult": -0.30}},
 	"heavy":    {"name": "Heavy Field",    "desc": "+35% area.",                   "cost": "-12% move speed.",            "mods": {"area": 0.35, "move": -0.12}},
 	"overdrive":{"name": "Overdrive",      "desc": "-22% cooldown.",               "cost": "Take +25% damage.",           "mods": {"cooldown": -0.22, "taken": 0.25}},
 	"greed":    {"name": "Greed Lattice",  "desc": "+35% XP, +50% pickup range.",  "cost": "Enemies have +15% HP.",       "mods": {"xp": 0.35, "pickup": 0.5, "enemy_hp": 0.15}},
-	"tunnel":   {"name": "Tunnel Vision",  "desc": "+2 pierce, +20% damage.",      "cost": "One fewer level-up option.",  "mods": {"pierce": 2, "damage": 0.20, "offers": -1}},
-	"anchor":   {"name": "Anchor",         "desc": "+60% damage while standing still.", "cost": "-10% move speed.",   "mods": {"anchor": 0.60, "move": -0.10}},
+	"tunnel":   {"name": "Tunnel Vision",  "desc": "+2 pierce, +20% damage.",      "cost": "One fewer level-up option.",  "mods": {"pierce": 2, "damage": 0.20, "offers": -1}, "weapons": ["vertex_shot"]},
+	"anchor":   {"name": "Anchor",         "desc": "+60% all damage while standing still.", "cost": "-10% move speed.",   "mods": {"anchor": 0.60, "move": -0.10}},
 	"momentum": {"name": "Momentum",       "desc": "+25% move speed.",             "cost": "-15% damage.",                "mods": {"move": 0.25, "damage": -0.15}},
 	"vampire":  {"name": "Siphon",         "desc": "Kills heal 0.4 HP.",           "cost": "No more heal drops or regen.", "mods": {"lifesteal": 0.4, "no_heal": 1}},
-	"trigger":  {"name": "Hair Trigger",   "desc": "+1 projectile / orbiter / spark for every weapon except Pulse Ring.", "cost": "-20% damage.", "mods": {"count": 1, "damage": -0.20}},
+	"trigger":  {"name": "Hair Trigger",   "desc": "+1 projectile / rod / spark.", "cost": "-20% damage.",                "mods": {"count": 1, "damage": -0.20}, "weapons": ["vertex_shot", "orbitals", "chain_arc"]},
 	"focus":    {"name": "Focus Lens",     "desc": "+20% crit chance.",            "cost": "-15% area.",                  "mods": {"crit": 0.20, "area": -0.15}},
-	"redline":  {"name": "Redline",        "desc": "+60% damage below 50% HP.",    "cost": "All healing is halved.",      "mods": {"redline": 0.60, "heal_mult": -0.5}},
+	"redline":  {"name": "Redline",        "desc": "+60% all damage below 50% HP.", "cost": "All healing is halved.",     "mods": {"redline": 0.60, "heal_mult": -0.5}},
 	"bulwark":  {"name": "Bulwark",        "desc": "+4 armor, +30 max HP.",        "cost": "+20% cooldown.",              "mods": {"armor": 4.0, "max_hp": 30.0, "cooldown": 0.20}},
-	"resonator":{"name": "Resonator",      "desc": "Every tag you hold counts +1 toward Resonance.", "cost": "-25% XP.",  "mods": {"resonance": 1, "xp": -0.25}},
-	"stasis":   {"name": "Stasis Field",   "desc": "Enemies move 15% slower.",     "cost": "-20% projectile speed and duration.", "mods": {"enemy_speed": -0.15, "speed": -0.20, "duration": -0.20}},
+	"stasis":   {"name": "Stasis Field",   "desc": "Enemies move 15% slower.",     "cost": "-20% attack speed (shots, spin, rings, jump range).", "mods": {"enemy_speed": -0.15, "speed": -0.20}},
 	"phoenix":  {"name": "Last Stand",     "desc": "Once per run, a lethal hit leaves you at 50% HP instead.", "cost": "-25% max HP.", "mods": {"revive": 1, "max_hp_mult": -0.25}},
 	"volatile": {"name": "Volatile Matter","desc": "Kills have a 25% chance to explode, hurting nearby enemies.", "cost": "Enemies deal +15% damage.", "mods": {"volatile": 0.25, "enemy_damage": 0.15}},
+	"rounds":   {"name": "Heavy Rounds",   "desc": "+15 bonus damage on every hit.", "cost": "+15% cooldown.",            "mods": {"bonus": 15, "cooldown": 0.15}},
+	"executioner": {"name": "Executioner", "desc": "+100% crit damage.",           "cost": "-10% crit chance.",           "mods": {"crit_dmg": 1.0, "crit": -0.10}},
+	"fracture": {"name": "Fracture Core",  "desc": "Kills have a 20% chance to burst into 3 shards.", "cost": "Enemies have +10% HP.", "mods": {"shards": 0.20, "enemy_hp": 0.10}},
+	"arc":      {"name": "Arc Coil",       "desc": "Hits have a 12% chance to arc to a nearby enemy.", "cost": "-10% damage.", "mods": {"arc": 0.12, "damage": -0.10}},
+	"slipstream": {"name": "Slipstream",   "desc": "+30% all damage while moving.", "cost": "-15% all damage while standing still.", "mods": {"moving": 0.30, "standing": -0.15}},
+	"overcharge": {"name": "Overcharge",   "desc": "Every 4th attack deals double damage.", "cost": "+10% cooldown.",     "mods": {"overcharge": 4, "cooldown": 0.10}},
 }
 const VOLATILE_RADIUS := 70.0
+const VOLATILE_K := 0.6       # blast damage as a fraction of a weapon hit
+const SHARD_K := 0.5
+const ARC_K := 0.5            # Arc Coil arcs carry this share of the hit that caused them
 const REVIVE_IFRAMES := 2.0
 
 # ---------------------------------------------------------------- enemies
 # behavior: chase, dash, shoot, split, elite, boss
 # armor: flat damage removed from every hit (min 1).  cap: max damage per hit (0 = none).
+# Colors stay inside the hostile violet-to-magenta band (see palette).
 const ENEMIES := {
-	"dot":      {"sides": 0, "radius": 7.0,  "hp": 4.0,   "speed": 100.0, "damage": 5.0,  "xp": 1, "mass": 0.6, "armor": 0.0, "cap": 0.0,  "color": Color(1.0, 0.25, 0.75), "behavior": "chase"},
-	"shard":    {"sides": 3, "radius": 9.0,  "hp": 6.0,   "speed": 125.0, "damage": 5.0,  "xp": 1, "mass": 0.6, "armor": 0.0, "cap": 0.0,  "color": Color(0.75, 0.4, 1.0),  "behavior": "chase"},
-	"darter":   {"sides": 3, "radius": 14.0, "hp": 14.0,  "speed": 75.0,  "damage": 10.0, "xp": 2, "mass": 0.8, "armor": 0.0, "cap": 0.0,  "color": Color(1.0, 0.55, 0.15), "behavior": "dash"},
-	"hexagon":  {"sides": 6, "radius": 18.0, "hp": 32.0,  "speed": 62.0,  "damage": 10.0, "xp": 3, "mass": 1.2, "armor": 0.0, "cap": 0.0,  "color": Color(0.75, 0.4, 1.0),  "behavior": "split"},
-	"pentagon": {"sides": 5, "radius": 16.0, "hp": 22.0,  "speed": 70.0,  "damage": 8.0,  "xp": 3, "mass": 1.0, "armor": 0.0, "cap": 0.0,  "color": Color(1.0, 0.4, 0.3),   "behavior": "shoot"},
-	"brute":    {"sides": 4, "radius": 22.0, "hp": 70.0,  "speed": 52.0,  "damage": 16.0, "xp": 6, "mass": 3.0, "armor": 5.0, "cap": 0.0,  "color": Color(0.9, 0.2, 0.5),   "behavior": "chase"},
-	"star":     {"sides": -5,"radius": 30.0, "hp": 650.0, "speed": 58.0,  "damage": 20.0, "xp": 30,"mass": 8.0, "armor": 0.0, "cap": 14.0, "color": Color(1.0, 0.3, 0.55),  "behavior": "elite"},
-	"boss_tetra":{"sides": 4, "radius": 52.0, "hp": 3200.0, "speed": 80.0, "damage": 25.0, "xp": 80, "mass": 50.0, "armor": 3.0, "cap": 0.0, "color": Color(1.0, 0.35, 0.2), "behavior": "boss"},
-	"boss_penta":{"sides": 5, "radius": 50.0, "hp": 2300.0, "speed": 70.0, "damage": 22.0, "xp": 80, "mass": 50.0, "armor": 3.0, "cap": 0.0, "color": Color(1.0, 0.6, 0.15), "behavior": "boss"},
-	"boss_hex": {"sides": 6, "radius": 58.0, "hp": 11000.0,"speed": 80.0, "damage": 30.0, "xp": 150,"mass": 50.0, "armor": 4.0, "cap": 0.0, "color": Color(0.8, 0.35, 1.0), "behavior": "boss"},
-	"boss_prism":{"sides": 8, "radius": 56.0, "hp": 7000.0,"speed": 60.0, "damage": 30.0, "xp": 150,"mass": 50.0, "armor": 4.0, "cap": 0.0, "color": Color(1.0, 0.3, 0.8), "behavior": "boss"},
-	"boss_final":{"sides": 3, "radius": 70.0, "hp": 38000.0,"speed": 75.0, "damage": 35.0, "xp": 0, "mass": 80.0, "armor": 5.0, "cap": 0.0, "color": Color(1.0, 0.2, 0.45), "behavior": "boss"},
-	"boss_void":{"sides": 0, "radius": 64.0, "hp": 36000.0,"speed": 55.0, "damage": 35.0, "xp": 0, "mass": 80.0, "armor": 5.0, "cap": 0.0, "color": Color(1.0, 0.25, 0.3), "behavior": "boss"},
+	"dot":      {"sides": 0, "radius": 7.0,  "hp": 4.0,   "speed": 100.0, "damage": 5.0,  "xp": 1, "mass": 0.6, "armor": 0.0, "cap": 0.0,  "color": Color(1.0, 0.3, 0.85), "behavior": "chase"},
+	"shard":    {"sides": 3, "radius": 9.0,  "hp": 6.0,   "speed": 125.0, "damage": 5.0,  "xp": 1, "mass": 0.6, "armor": 0.0, "cap": 0.0,  "color": Color(0.7, 0.45, 1.0),  "behavior": "chase"},
+	"darter":   {"sides": 3, "radius": 14.0, "hp": 14.0,  "speed": 75.0,  "damage": 10.0, "xp": 2, "mass": 0.8, "armor": 0.0, "cap": 0.0,  "color": Color(0.95, 0.6, 1.0), "behavior": "dash"},
+	"hexagon":  {"sides": 6, "radius": 18.0, "hp": 32.0,  "speed": 62.0,  "damage": 10.0, "xp": 3, "mass": 1.2, "armor": 0.0, "cap": 0.0,  "color": Color(0.6, 0.35, 1.0),  "behavior": "split"},
+	"pentagon": {"sides": 5, "radius": 16.0, "hp": 22.0,  "speed": 70.0,  "damage": 8.0,  "xp": 3, "mass": 1.0, "armor": 0.0, "cap": 0.0,  "color": Color(0.8, 0.3, 1.0),   "behavior": "shoot"},
+	"brute":    {"sides": 4, "radius": 22.0, "hp": 70.0,  "speed": 52.0,  "damage": 16.0, "xp": 6, "mass": 3.0, "armor": 5.0, "cap": 0.0,  "color": Color(0.85, 0.2, 0.7),   "behavior": "chase"},
+	"star":     {"sides": -5,"radius": 30.0, "hp": 650.0, "speed": 58.0,  "damage": 20.0, "xp": 30,"mass": 8.0, "armor": 0.0, "cap": 14.0, "color": Color(1.0, 0.4, 0.9),  "behavior": "elite"},
+	"boss_tetra":{"sides": 4, "radius": 52.0, "hp": 3200.0, "speed": 80.0, "damage": 25.0, "xp": 80, "mass": 50.0, "armor": 3.0, "cap": 0.0, "color": Color(0.95, 0.3, 0.8), "behavior": "boss"},
+	"boss_penta":{"sides": 5, "radius": 50.0, "hp": 2300.0, "speed": 70.0, "damage": 22.0, "xp": 80, "mass": 50.0, "armor": 3.0, "cap": 0.0, "color": Color(0.8, 0.4, 1.0), "behavior": "boss"},
+	"boss_hex": {"sides": 6, "radius": 58.0, "hp": 11000.0,"speed": 80.0, "damage": 30.0, "xp": 150,"mass": 50.0, "armor": 4.0, "cap": 0.0, "color": Color(0.65, 0.35, 1.0), "behavior": "boss"},
+	"boss_prism":{"sides": 8, "radius": 56.0, "hp": 7000.0,"speed": 60.0, "damage": 30.0, "xp": 150,"mass": 50.0, "armor": 4.0, "cap": 0.0, "color": Color(1.0, 0.35, 0.9), "behavior": "boss"},
+	"boss_final":{"sides": 3, "radius": 70.0, "hp": 38000.0,"speed": 75.0, "damage": 35.0, "xp": 0, "mass": 80.0, "armor": 5.0, "cap": 0.0, "color": Color(1.0, 0.25, 0.75), "behavior": "boss"},
+	"boss_void":{"sides": 0, "radius": 64.0, "hp": 36000.0,"speed": 55.0, "damage": 35.0, "xp": 0, "mass": 80.0, "armor": 5.0, "cap": 0.0, "color": Color(0.75, 0.3, 1.0), "behavior": "boss"},
 }
 # Boss roster. Each boss event picks one of its pool at random. `final` bosses end the run when killed.
 const BOSSES := {
