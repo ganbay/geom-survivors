@@ -87,7 +87,13 @@ func _ready() -> void:
 	for v in args.shots.split(",", false):
 		shots.append(float(v))
 	Save.run_config = {"character": args.char, "depth": int(args.depth)}
-	game = load("res://scenes/game.tscn").instantiate()
+	game = load("res://scenes/game.tscn").instantiate() as Game
+	if game == null:
+		# a script error broke the game scene: stop now instead of logging an error every frame forever
+		push_error("autoplay: the game scene failed to load")
+		set_process(false)
+		get_tree().quit(1)
+		return
 	game.god_mode = args.god == "1"
 	add_child(game)
 	start_ms = Time.get_ticks_msec()

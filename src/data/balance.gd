@@ -149,7 +149,7 @@ const WEAPONS := {
 	"pulse_ring": {
 		"name": "Pulse Ring",
 		"desc": "Emits an expanding ring that damages everything it crosses.",
-		"base": {"damage": 8.0, "cooldown": 2.2, "count": 1, "speed": 1.0},
+		"base": {"damage": 10.0, "cooldown": 2.2, "count": 1, "speed": 1.0},
 		"levels": [
 			{"wd": 5},
 			{"area": 0.20},
@@ -196,6 +196,7 @@ const CASCADE_GAIN := 0.12        # Cascade: damage gained per jump
 const DETONATE_RADIUS := 60.0     # Detonation: blast radius with no jumps
 const DETONATE_PER_JUMP := 12.0   # ... and what each jump adds
 const DETONATE_K := 1.2
+const DETONATE_GAP := 0.12        # seconds between one volley's sparks, so stacked blasts read as separate hits
 const REPULSOR_EVERY := 3
 const REPULSOR_KNOCKBACK := 240.0
 

@@ -301,6 +301,17 @@ What it shows:
 - **Deaths cluster at the 10:00 boss.** Across the 6:00 runs, 30 of the 120 died between 10:00 and 11:40, none of them Vertex Shot. Cascade runs reach 10:00 with 6,000–8,000 kills and then die to Hexcore, so horde clearing is fine and boss damage or survivability is not.
 - **Full builds are reachable for strong builds only:** winning Vertex Shot runs end around level 45–47; everything else dies in the low-to-mid 20s.
 
+## 2026-10-09 (fifth pass): damage numbers, Detonation gap, Tide sweep, two base buffs
+
+The balance tables above predate these changes.
+
+- **Damage numbers.** Every hit shows the damage dealt above the enemy for 0.6s: white for a normal hit, larger gold with "!" for a crit. At most 70 on screen; when full, normal hits are dropped and a crit replaces the oldest. Settings has a "Damage numbers" toggle (on by default).
+- **Detonation:** a volley's sparks go off 0.12s apart instead of in the same frame, each aimed when it goes off. Overlapping blasts always each dealt damage; the gap and the numbers make that visible.
+- **Tide:** the sweep is now resolved before every turn, and a frame long enough to hold several passes plays all of them. Checked at 20 fps with the pass time forced to 0.12s and to 0.08s: measured damage matched the expected hit count within 1%.
+- **Pulse Ring** base damage 10 (was 8).
+- **Rods** base length 117px (was 90).
+- **Test bot:** it now quits if the game scene fails to load. Before, a script error made it log an error every frame forever (this filled 17 GB of logs in ten minutes).
+
 ## Current characters, weapons and upgrades (as of 2026-10-09)
 
 A snapshot of how everything works right now. The numbers live in `src/data/balance.gd`; the behavior lives in `src/weapons/*.gd`, `src/core/build.gd` (`recompute`, `roll_hit`) and `src/core/game.gd` (kill and hit effects). Update this section whenever balance changes.
@@ -352,7 +363,7 @@ Levels 4, 7 and 10 are pick-one. "WD" is weapon damage.
   - **Deadeye:** a crit doesn't use up pierce. +10 WD, +10% crit, +50% crit damage, −10% cooldown.
 
 **Rods** (Square; id `orbitals`)
-- Base: 11 damage, 2 rods, 90px long, 7px half-width, spin 2.6 rad/s. Rods are evenly spaced and each hits everything along it once per pass.
+- Base: 11 damage, 2 rods, 117px long, 7px half-width, spin 2.6 rad/s. Rods are evenly spaced and each hits everything along it once per pass.
 - 2: +1 rod · 3: +20% length, +4 WD
 - **4:** Extra Rod (+1 rod, −3 WD) / Flywheel (+25% spin, +5 WD) / Long Reach (+25% length, +20% width)
 - 5: +10% spin · 6: +1 rod, +10% length
@@ -364,7 +375,7 @@ Levels 4, 7 and 10 are pick-one. "WD" is weapon damage.
   - **Event Horizon:** +25% length. Non-boss enemies within 1.8× reach are dragged in to 0.6× reach.
 
 **Pulse Ring** (Circle)
-- Base: 8 damage, 2.2s cooldown, 1 ring, 170px, full size in 0.42s. A ring hits each enemy once.
+- Base: 10 damage, 2.2s cooldown, 1 ring, 170px, full size in 0.42s. A ring hits each enemy once.
 - 2: +5 WD · 3: +20% size
 - **4:** Quick Pulse (−15% cooldown) / Wide Band (+25% size, +20% ring speed) / Hard Pulse (+10% crit, +30% crit damage)
 - 5: −10% cooldown · 6: +20% ring speed, +5 WD
@@ -384,7 +395,7 @@ Levels 4, 7 and 10 are pick-one. "WD" is weapon damage.
 - 8: +2 jumps, +20% jump range · 9: −10% cooldown
 - **10:**
   - **Cascade:** each jump hits 12% harder than the one before.
-  - **Detonation:** no jumps. Each spark explodes on its target: (60px + 12px per jump) × area, k 1.2.
+  - **Detonation:** no jumps. Each spark explodes on its target: (60px + 12px per jump) × area, k 1.2. A volley's sparks go off 0.12s apart.
   - **Static Field:** +30% max HP. Enemy bullets miss half the time, and each miss throws a full spark at the nearest enemy.
 
 ### Passives (pick 4 of 8, 10 levels each)

@@ -1,8 +1,11 @@
 class_name Fx
 extends Node2D
-## Particles (batched streaks), expanding rings, beams/arcs and screen shake.
+## Particles (batched streaks), expanding rings, beams/arcs, damage numbers and screen shake.
 
 const MAX_PARTICLES := 500
+const MAX_NUMBERS := 70
+const NUMBER_LIFE := 0.6
+const NUMBER_RISE := 46.0  # px per second
 
 var game: Game
 var batch: ShapeBatch
@@ -20,6 +23,11 @@ var rings: Array = []
 # lines: [PackedVector2Array, color, life, max_life, width]
 var lines: Array = []
 
+# damage numbers: [x, y, text, crit, life]
+var numbers: Array = []
+var show_numbers := true
+var font: Font
+
 var shake_amount := 0.0
 var shake_offset := Vector2.ZERO
 var particle_budget := 1.0  # lowered on slow devices
@@ -28,6 +36,8 @@ var particle_budget := 1.0  # lowered on slow devices
 func setup(g: Game) -> void:
 	game = g
 	material = Shapes.get_add_material()
+	show_numbers = Save.get_setting("damage_numbers", true)
+	font = UI.theme().default_font if UI.theme().default_font else ThemeDB.fallback_font
 	batch = ShapeBatch.new().setup(Shapes.streak_mesh(), 256)
 	add_child(batch)
 	for arr in ["x", "y", "vx", "vy", "life", "max_life"]:
@@ -66,6 +76,19 @@ func crit_spark(px: float, py: float) -> void:
 	for k in 2:
 		var a := randf() * TAU
 		particle(px, py, cos(a) * 300.0, sin(a) * 300.0, 0.15, Balance.C_GOLD)
+
+
+## Floating damage number over a hit. Crits are bigger and gold. When the screen is full of numbers,
+## normal hits are dropped and a crit takes the oldest number's place.
+func number(px: float, py: float, amount: float, crit: bool) -> void:
+	if not show_numbers:
+		return
+	if numbers.size() >= MAX_NUMBERS:
+		if not crit:
+			return
+		numbers.pop_front()
+	var text := str(maxi(1, roundi(amount)))
+	numbers.append([px + randf_range(-10.0, 10.0), py + randf_range(-6.0, 6.0), text + "!" if crit else text, crit, NUMBER_LIFE])
 
 
 func ring(px: float, py: float, radius: float, c: Color, l: float, width := 3.0) -> void:
@@ -115,6 +138,12 @@ func update(delta: float) -> void:
 		lines[k][2] -= delta
 		if lines[k][2] <= 0.0:
 			lines.remove_at(k)
+	for k in range(numbers.size() - 1, -1, -1):
+		var num: Array = numbers[k]
+		num[4] -= delta
+		num[1] -= NUMBER_RISE * delta
+		if num[4] <= 0.0:
+			numbers.remove_at(k)
 	if shake_amount > 0.1:
 		shake_offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * shake_amount
 		shake_amount *= exp(-12.0 * delta)
@@ -144,3 +173,9 @@ func _draw() -> void:
 		var f: float = l[2] / l[3]
 		var c: Color = l[1]
 		Shapes.draw_neon_polyline(self, l[0], Color(c, f), l[4] * (0.4 + f * 0.6))
+	for num in numbers:
+		var crit: bool = num[3]
+		var size := 26 if crit else 17
+		var c := Balance.C_GOLD if crit else Color.WHITE
+		c.a = clampf(num[4] / (NUMBER_LIFE * 0.5), 0.0, 1.0)
+		draw_string(font, Vector2(num[0] - 60.0, num[1]), num[2], HORIZONTAL_ALIGNMENT_CENTER, 120.0, size, c)

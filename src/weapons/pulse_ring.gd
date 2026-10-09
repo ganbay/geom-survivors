@@ -5,6 +5,7 @@ extends Weapon
 
 const RADIUS := 170.0
 const GROW_TIME := 0.42  # seconds for a ring to reach full size at speed 1
+const TIDE_MIN_PASS := 0.12  # Tide: fastest one sweep (out or in) can get
 
 # each ring: [radius, max_radius, hit_uids(Dictionary), delay, k, repulse]
 var rings: Array = []
@@ -60,22 +61,32 @@ func update(delta: float) -> void:
 ## Tide: the ring sweeps out to full size and back in, forever. One pass takes half a cooldown at ring
 ## speed 1, shortened again by how far the cooldown has been cut, so cooldown reduction counts twice.
 func _tide(delta: float) -> void:
-	var en := game.enemies
-	var p := game.player.position
 	var max_r: float = RADIUS * s.area
 	var cut: float = cooldown() / data.base.cooldown
-	var pass_time: float = maxf(cooldown() * 0.5 * cut / s.speed, 0.12)
-	var step := max_r / pass_time * delta
-	tide_r += step if tide_out else -step
-	if tide_r >= max_r or tide_r <= 0.0:
-		# turned around: a new pass counts as a new attack and can hit everyone again
-		tide_r = clampf(tide_r, 0.0, max_r)
-		tide_out = not tide_out
-		tide_hit.clear()
-		attacks += 1
-		tide_k = 2.0 if game.build.overcharge > 0 and attacks % game.build.overcharge == 0 else 1.0
-		if tide_out:
-			Sfx.play("pulse")
+	var pass_time: float = maxf(cooldown() * 0.5 * cut / s.speed, TIDE_MIN_PASS)
+	# Travel the whole frame's distance, hitting before every turn: however fast the ring gets, each pass
+	# still reaches every enemy, and a frame long enough to hold several passes plays all of them.
+	var travel := max_r / pass_time * delta
+	while travel > 0.0:
+		var left := max_r - tide_r if tide_out else tide_r
+		var step := minf(travel, left)
+		tide_r += step if tide_out else -step
+		travel -= step
+		_tide_hits(max_r)
+		if step >= left:
+			# turned around: a new pass counts as a new attack and can hit everyone again
+			tide_out = not tide_out
+			tide_hit.clear()
+			attacks += 1
+			tide_k = 2.0 if game.build.overcharge > 0 and attacks % game.build.overcharge == 0 else 1.0
+			if tide_out:
+				Sfx.play("pulse")
+
+
+## Hits everything the ring has reached on this pass and hasn't hit yet.
+func _tide_hits(max_r: float) -> void:
+	var en := game.enemies
+	var p := game.player.position
 	var c := en.query(p.x, p.y, max_r)
 	for q in c:
 		var j := en.qbuf[q]

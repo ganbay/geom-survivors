@@ -646,7 +646,7 @@ func _draw_hazards() -> void:
 # ------------------------------------------------------------------ damage
 
 ## Returns damage actually dealt.
-func hit(i: int, amount: float, push_x: float, push_y: float, source: String) -> float:
+func hit(i: int, amount: float, push_x: float, push_y: float, source: String, crit := false) -> float:
 	if dead[i]:
 		return 0.0
 	var t := typ[i]
@@ -657,6 +657,7 @@ func hit(i: int, amount: float, push_x: float, push_y: float, source: String) ->
 		a = minf(a, t_cap[t])
 	hp[i] -= a
 	flash[i] = 0.09
+	game.fx.number(px[i], py[i] - t_radius[t] - 6.0, a, crit)
 	var m := t_mass[t]
 	kx[i] += push_x / m
 	ky[i] += push_y / m

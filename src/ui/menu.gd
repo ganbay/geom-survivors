@@ -269,6 +269,7 @@ func _open_settings() -> void:
 	_setting_toggle(m.body, "Vibration", "vibration", true)
 	_setting_toggle(m.body, "Screen shake", "shake", true)
 	_setting_toggle(m.body, "Low graphics (faster)", "low_quality", false)
+	_setting_toggle(m.body, "Damage numbers", "damage_numbers", true)
 	_setting_toggle(m.body, "Show FPS", "show_fps", false)
 	var done := UI.button("DONE", m.close, 64, true)
 	done.add_theme_font_size_override("font_size", 24)

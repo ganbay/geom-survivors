@@ -192,7 +192,7 @@ func strike(j: int, weapon_damage: float, k: float, push_x: float, push_y: float
 	var en := game.enemies
 	if was_crit and sum.has("crit_arc"):
 		game.queue_arc(en.px[j], en.py[j], en.uid[j], amount * stat("crit_arc"))
-	en.hit(j, amount, push_x, push_y, source)
+	en.hit(j, amount, push_x, push_y, source, was_crit)
 	return was_crit
 
 

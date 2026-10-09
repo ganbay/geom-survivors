@@ -9,6 +9,32 @@ extends Weapon
 const TARGET_RANGE := 420.0
 const JUMP_RANGE := 150.0
 
+# Detonation: sparks still to go off, as [delay, rank among the nearest enemies, k]
+var pending: Array = []
+
+
+func update(delta: float) -> void:
+	super.update(delta)
+	for i in range(pending.size() - 1, -1, -1):
+		var d: Array = pending[i]
+		d[0] -= delta
+		if d[0] <= 0.0:
+			pending.remove_at(i)
+			# aimed when it goes off, so a spark never wastes itself on an enemy that already died
+			var en := game.enemies
+			var near := en.nearest_to_player(int(d[1]) + 1, TARGET_RANGE * s.area)
+			if not near.is_empty():
+				var j := _ranked(near, int(d[1]))
+				_detonate(game.player.tip_near(Vector2(en.px[j], en.py[j])), j, d[2])
+				Sfx.play("boom")
+
+
+## The enemy at `rank` when `near` is ordered by distance to the player (the last one if there are fewer).
+func _ranked(near: PackedInt32Array, rank: int) -> int:
+	var order := Array(near)
+	order.sort_custom(func(a, b): return game.enemies.pd2[a] < game.enemies.pd2[b])
+	return order[mini(rank, order.size() - 1)]
+
 
 func fire() -> void:
 	var count := int(s.count)
@@ -17,14 +43,15 @@ func fire() -> void:
 	if starts.is_empty():
 		timer = 0.2  # retry soon instead of wasting the cooldown
 		return
+	if evo == "detonate":
+		# each spark goes off a moment after the last one, at the next-nearest enemy
+		for i in count:
+			pending.append([i * Balance.DETONATE_GAP, i % starts.size(), k()])
+		return
 	for i in count:
 		var j := starts[i % starts.size()]
-		var from := game.player.tip_near(Vector2(en.px[j], en.py[j]))
-		if evo == "detonate":
-			_detonate(from, j)
-		else:
-			_spark(from, j, int(s.bounces), k())
-	Sfx.play("boom" if evo == "detonate" else "zap")
+		_spark(game.player.tip_near(Vector2(en.px[j], en.py[j])), j, int(s.bounces), k())
+	Sfx.play("zap")
 
 
 func _spark(from: Vector2, first: int, hops: int, hit_k: float) -> void:
@@ -48,7 +75,7 @@ func _spark(from: Vector2, first: int, hops: int, hit_k: float) -> void:
 
 
 ## Detonation: no jumps. The spark blows up on its target; every jump the weapon has widens the blast.
-func _detonate(from: Vector2, target: int) -> void:
+func _detonate(from: Vector2, target: int, hit_k: float) -> void:
 	var en := game.enemies
 	var pos := Vector2(en.px[target], en.py[target])
 	var r: float = (Balance.DETONATE_RADIUS + Balance.DETONATE_PER_JUMP * int(s.bounces)) * s.area
@@ -56,7 +83,7 @@ func _detonate(from: Vector2, target: int) -> void:
 	var hits := en.qbuf.slice(0, c)
 	for j in hits:
 		var push: Vector2 = (Vector2(en.px[j], en.py[j]) - pos).normalized() * s.knockback
-		strike(j, k(Balance.DETONATE_K), push.x, push.y)
+		strike(j, hit_k * Balance.DETONATE_K, push.x, push.y)
 	game.fx.line(_jagged(PackedVector2Array([from, pos])), Balance.C_WEAPON, 0.16, 2.5)
 	game.fx.ring(pos.x, pos.y, r, Balance.C_WEAPON, 0.3, 4.0)
 
@@ -81,3 +108,7 @@ static func _jagged(pts: PackedVector2Array) -> PackedVector2Array:
 			out.append(a.lerp(b, f) + nrm * randf_range(-10.0, 10.0))
 	out.append(pts[pts.size() - 1])
 	return out
+
+
+func clear() -> void:
+	pending.clear()
