@@ -270,6 +270,37 @@ What it shows:
 - **Rods at level 9 outlasting all three Rods forms is unexplained.** Saturn is the same build plus outer rods. It may be seed noise (runs vary by about ±2 minutes) and needs a re-run with more seeds before anyone acts on it.
 - **Almost nothing wins.** 13 of 16 builds have a 0–10% win rate. The first baseline had six forms at 30% or more, so removing knockback and the old Pulse Ring forms made the game much harder for the bot.
 
+## 2026-10-09 (fourth pass): each form with a build chosen for it
+
+Nothing was tuned. The bot got `build=<form>` (see `BUILDS` in `tests/autoplay.gd`): the form's own picks at levels 4 and 7, four passives in strict priority order, and named milestone options (bonus damage almost everywhere). 10 seeds per row. "Generic" is the third-pass result (Damage, Hull, Cooldown, Area at random, first options).
+
+The reasoning behind the builds:
+- Weapon damage is low (10–32), so Payload/Warhead beat Power/Overwhelm unless weapon damage × average crit is above roughly 33/40.
+- Cooldown multiplies everything, bonus damage included, and stacks multiplicatively (about ×1.88 maxed).
+- Critical only pays on paths that already build crit.
+
+| Form | Passives in priority order | Won from 6:00 (generic → build) | Median survival from 6:00 | Won from 0:00 | Median survival from 0:00 |
+|---|---|---|---|---|---|
+| Focus Fire | Damage, Cooldown, Hull, Area | 0% → 70% | 16:39 | 90% | 16:28 |
+| Star Burst (Volley at 4) | Damage, Cooldown, Critical, Hull | 70% → 80% | 15:49 | 90% | 15:56 |
+| Deadeye | Critical, Damage, Cooldown, Hull | 10% → 0% | 10:42 | 10% | 10:11 |
+| Saturn | Damage, Cooldown, Area, Hull | 0% → 20% | 10:59 | 0% | 11:44 |
+| Aegis | Damage, Area, Cooldown, Hull | 0% → 0% | 11:01 | 10% | 10:34 |
+| Event Horizon | Cooldown, Damage, Hull, Velocity | 0% → 0% | 9:46 | 0% | 9:32 |
+| Double Pulse | Cooldown, Damage, Area, Hull | 0% → 0% | 10:59 | 0% | 9:29 |
+| Repulsor | Cooldown, Area, Damage, Hull | 0% → 0% | 9:35 | 0% | 8:13 |
+| Tide | Cooldown, Damage, Velocity, Critical | 30% → 10% | 14:12 | 30% | 12:10 |
+| Cascade (Long Chain, Far Reach) | Damage, Cooldown, Velocity, Critical | 0% → 10% | 11:54 | 0% | 10:07 |
+| Detonation (Long Chain, Far Reach) | Area, Damage, Cooldown, Critical | 0% → 10% | 8:01 | 10% | 7:33 |
+| Static Field | Damage, Hull, Cooldown, Velocity | 0% → 0% | 12:25 | 0% | 11:15 |
+
+What it shows:
+- **The bonus-damage reasoning holds for Vertex Shot.** Focus Fire went from never winning to 70–90%, on the same passives as the generic run but with Payload and Warhead and strict priority.
+- **It did not rescue anything else.** Rods, Pulse Ring and Chain Arc still win 0–30%, so their problem is the weapons, not the passive choices.
+- **Three builds got worse than generic:** Detonation (Area first leaves it without damage; median 8:01, was 11:30), Static Field (12:25, was 15:30) and Deadeye (Critical first; 10:42, was 12:16). Putting a non-damage passive first, or dropping Area/Hull, costs more than the synergy gives.
+- **Deaths cluster at the 10:00 boss.** Across the 6:00 runs, 30 of the 120 died between 10:00 and 11:40, none of them Vertex Shot. Cascade runs reach 10:00 with 6,000–8,000 kills and then die to Hexcore, so horde clearing is fine and boss damage or survivability is not.
+- **Full builds are reachable for strong builds only:** winning Vertex Shot runs end around level 45–47; everything else dies in the low-to-mid 20s.
+
 ## Current characters, weapons and upgrades (as of 2026-10-09)
 
 A snapshot of how everything works right now. The numbers live in `src/data/balance.gd`; the behavior lives in `src/weapons/*.gd`, `src/core/build.gd` (`recompute`, `roll_hit`) and `src/core/game.gd` (kill and hit effects). Update this section whenever balance changes.
@@ -397,6 +428,7 @@ Levels 4, 7 and 10 are pick-one. "WD" is weapon damage.
 | Overcharge (new) | Every 4th attack deals double | +10% cooldown |
 
 ### Where each build stands
-See the third-pass table (2026-10-09). Untuned.
+See the third- and fourth-pass tables (2026-10-09). Untuned.
+- **Strong with the right passives:** Focus Fire (needs the bonus-damage options).
 - **Strong:** Star Burst.
 - **Weak:** Pulse Ring (all forms except Tide), all three Rods forms, Detonation.

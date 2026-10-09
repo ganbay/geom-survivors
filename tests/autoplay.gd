@@ -14,12 +14,16 @@ extends Node
 ##   real   = a normal run from 0:00 (no god mode): the bot takes every weapon level, follows the path at its
 ##            milestones, fills passives (first option at their milestones) and always vents cores for the heal.
 ##            Prints "REAL ..." when the run ends. With start=<s> it jumps in mid-run at level 10 (see _real_setup).
+## build=<form> (with bench=real) plays that level-10 form the way BUILDS says suits it: its own picks at levels 4
+##   and 7, its four passives in priority order (the first is maxed before the next is touched) and named options
+##   at passive milestones. It sets evo= itself. Forms: focus burst deadeye saturn aegis horizon double repulsor
+##   tide cascade detonate field.
 ## core=1 opens an overclock core right away; core=2 opens the level-10 milestone picker (for screenshots).
 ## Example: godot --headless --fixed-fps 60 res://tests/autoplay.tscn -- evo=orbitals:a-b-b bench=real seed=1
 ## Example: godot --headless --fixed-fps 60 res://tests/autoplay.tscn -- evo=orbitals:a-b-b bench=single start=480 seconds=60
 
 var game: Game
-var args := {"char": "triangle", "depth": "0", "god": "0", "seconds": "900", "pick": "smart", "seed": "1", "shots": "", "out": "", "pause_at": "-1", "evo": "", "start": "0", "stand": "0", "name": "", "core": "0", "boss": "", "bossnow": "0", "bench": "", "targets": "10"}
+var args := {"char": "triangle", "depth": "0", "god": "0", "seconds": "900", "pick": "smart", "seed": "1", "shots": "", "out": "", "pause_at": "-1", "evo": "", "start": "0", "stand": "0", "name": "", "core": "0", "boss": "", "bossnow": "0", "bench": "", "targets": "10", "build": ""}
 var over_wait := 0
 var pause_wait := 0
 var shots: Array[float] = []
@@ -41,6 +45,22 @@ const CLEAR_HORDE := 200
 const MID_RUN_LEVEL := 22  # bench=real with start>0: player level when jumping in
 const MID_RUN_PASSIVES := ["damage", "hull", "cooldown", "area"]  # at level 3 each
 const MILESTONES := [4, 7, 10]  # weapon levels the evo path picks for
+# build=<form>: the weapon path, the passives in priority order, and the milestone options to take by name
+# (any milestone not named takes its first option). Reasoning is in NOTES.md, 2026-10-09 fourth pass.
+const BUILDS := {
+	"focus":    {"evo": "vertex_shot:a-a-a", "passives": ["damage", "cooldown", "hull", "area"], "options": ["Payload", "Warhead"]},
+	"burst":    {"evo": "vertex_shot:a-b-b", "passives": ["damage", "cooldown", "crit", "hull"], "options": ["Payload", "Warhead"]},
+	"deadeye":  {"evo": "vertex_shot:c-c-c", "passives": ["crit", "damage", "cooldown", "hull"], "options": ["Sharp Eye", "Marksman"]},
+	"saturn":   {"evo": "orbitals:a-a-a", "passives": ["damage", "cooldown", "area", "hull"], "options": ["Payload", "Warhead", "Impact"]},
+	"aegis":    {"evo": "orbitals:b-b-b", "passives": ["damage", "area", "cooldown", "hull"], "options": ["Payload", "Warhead", "Plating"]},
+	"horizon":  {"evo": "orbitals:c-c-c", "passives": ["cooldown", "damage", "hull", "velocity"], "options": ["Payload", "Warhead", "Reactive Plating"]},
+	"double":   {"evo": "pulse_ring:a-a-a", "passives": ["cooldown", "damage", "area", "hull"], "options": ["Payload", "Warhead"]},
+	"repulsor": {"evo": "pulse_ring:b-b-b", "passives": ["cooldown", "area", "damage", "hull"], "options": ["Payload", "Warhead", "Double Tap"]},
+	"tide":     {"evo": "pulse_ring:c-c-c", "passives": ["cooldown", "damage", "velocity", "crit"], "options": ["Payload", "Warhead"]},
+	"cascade":  {"evo": "chain_arc:b-c-a", "passives": ["damage", "cooldown", "velocity", "crit"], "options": ["Payload", "Warhead"]},
+	"detonate": {"evo": "chain_arc:b-c-b", "passives": ["area", "damage", "cooldown", "crit"], "options": ["Payload", "Warhead"]},
+	"field":    {"evo": "chain_arc:c-c-c", "passives": ["damage", "hull", "cooldown", "velocity"], "options": ["Payload", "Warhead"]},
+}
 const CLEAR_BOSSES := ["boss_tetra", "boss_penta"]
 const DUMMY_TYPE := "brute"  # no AI or summons; resized to boss scale for bench=single
 const DUMMY_RADIUS := 52.0
@@ -56,6 +76,8 @@ func _ready() -> void:
 		var kv := a.split("=")
 		if kv.size() == 2:
 			args[kv[0]] = kv[1]
+	if args.build != "":
+		args.evo = BUILDS[args.build].evo
 	if args.evo != "":
 		for cid in Balance.CHARACTERS:
 			if Balance.CHARACTERS[cid].start == args.evo.split(":")[0]:
@@ -94,13 +116,28 @@ func _real_setup() -> void:
 	if float(args.start) > 0.0:
 		# jump in with the weapon in its level-10 form and a few passives started
 		_set_path(args.evo.split(":")[1])
-		for id in MID_RUN_PASSIVES:
+		for id in _passive_plan():
 			b.passives[id] = 3
 		b.recompute()
 		evolved_at = float(args.start)
 		game.level = MID_RUN_LEVEL
 		game.xp_next = Balance.xp_needed(MID_RUN_LEVEL)
 		game.player.hp = b.max_hp
+
+
+## The four passives this run uses, in priority order.
+func _passive_plan() -> Array:
+	return BUILDS[args.build].passives if args.build != "" else MID_RUN_PASSIVES
+
+
+## Index of the option to take at a passive milestone: the one BUILDS names, else the first.
+func _passive_pick(id: String, level: int) -> int:
+	if args.build != "":
+		var opts := Build.level_options("passive", id, level)
+		for i in opts.size():
+			if opts[i].name in BUILDS[args.build].options:
+				return i
+	return 0
 
 
 ## Index of the option the evo path takes at a weapon milestone (0 when the path doesn't say).
@@ -218,8 +255,12 @@ func _real_score(o: Dictionary) -> float:
 		"option":
 			if o.item == "weapon":
 				return 100.0 if o.index == _path_pick(o.level) else -100.0
-			return 5.0 if o.index == 0 else 1.0
+			return 5.0 if o.index == _passive_pick(o.id, o.level) else 1.0
 		"passive":
+			if args.build != "":
+				# strict priority: the first passive on the list that's offered
+				var rank := _passive_plan().find(o.id)
+				return 8.0 - rank if rank >= 0 else -10.0
 			return 3.0 + randf()
 		"bonus":
 			return 1.0
