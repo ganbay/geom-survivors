@@ -171,6 +171,31 @@ Everything above this section describes the old multi-weapon game and is kept as
 - **Octaprism** is still untested by hand; the bot still forces Hexcore at 10:00.
 
 
+**Baseline** (`bench=real start=360`, 10 seeds per level-10 form, untuned)
+- Setup: starts at 6:00 at level 22 with the weapon at level 10 and Damage, Hull, Cooldown and Area at level 3. The bot takes the same option letter at levels 4, 7 and 10 and the first option at passive milestones. No overclocks. The 10:00 boss is forced to Hexcore.
+- Survival is when the run ended, so a slow win counts as longer than a fast one. Compare by rank.
+
+| Form | Path | Survival | Reached 15:00 | Won |
+|---|---|---|---|---|
+| Shockwave (Pulse Ring) | a-a-a | 20:16 | 100% | 100% |
+| Star Burst (Vertex Shot) | b-b-b | 17:24 | 80% | 80% |
+| Metronome (Pulse Ring) | b-b-b | 16:55 | 100% | 100% |
+| Focus Fire (Vertex Shot) | a-a-a | 16:32 | 70% | 0% |
+| Implosion (Pulse Ring) | c-c-c | 16:13 | 90% | 90% |
+| Deadeye (Vertex Shot) | c-c-c | 16:11 | 50% | 40% |
+| Saturn (Rods) | a-a-a | 16:01 | 80% | 10% |
+| Aegis (Rods) | b-b-b | 15:12 | 30% | 30% |
+| Static Skin (Chain Arc) | c-c-c | 12:34 | 10% | 0% |
+| Thunderstorm (Chain Arc) | b-b-b | 12:03 | 20% | 0% |
+| Tesla Grid (Chain Arc) | a-a-a | 11:39 | 0% | 0% |
+| Event Horizon (Rods) | c-c-c | 10:53 | 0% | 0% |
+
+What it shows:
+- **Pulse Ring is far ahead:** all three forms win 90–100% of runs.
+- **Chain Arc is far behind:** no form wins, and most runs end near the 10:00 boss.
+- **Event Horizon is the weakest form:** it never reaches 15:00. Dragging enemies onto a close-range character hurts more than it helps.
+- **Focus Fire reaches the final boss but never kills it.**
+
 ## Current characters, weapons and upgrades (as of 2026-10-09)
 
 A snapshot of how everything works right now. The numbers live in `src/data/balance.gd`; the behavior lives in `src/weapons/*.gd`, `src/core/build.gd` (`recompute`, `roll_hit`) and `src/core/game.gd` (kill and hit effects). Update this section whenever balance changes.
@@ -298,3 +323,5 @@ Levels 4, 7 and 10 are pick-one. "WD" is weapon damage.
 
 ### Where each build stands
 See the baseline table in the 2026-10-09 section. Nothing has been tuned since the overhaul.
+- **Too strong:** Pulse Ring (all three forms).
+- **Too weak:** Chain Arc (all three forms) and Event Horizon.
