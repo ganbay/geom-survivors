@@ -1,0 +1,120 @@
+REAL chain_arc:b-c-a        Cascade         DEATH   time= 529.3 lvl=24 evo= 189.6 taken=   119 kills= 6001 | velocity4 damage9 | bosses=boss_hex
+REAL chain_arc:b-c-a        Cascade         DEATH   time= 577.5 lvl=22 evo= 338.7 taken=   264 kills= 5446 | crit1 damage4 velocity7 | bosses=boss_hex
+REAL chain_arc:b-c-a        Cascade         DEATH   time= 603.8 lvl=23 evo= 163.2 taken=   147 kills= 7019 | damage10 crit1 velocity2 | bosses=boss_hex
+REAL chain_arc:b-c-a        Cascade         DEATH   time= 677.5 lvl=28 evo= 142.0 taken=   210 kills= 9083 | damage10 crit1 velocity2 cooldown6 | bosses=boss_hex
+REAL chain_arc:b-c-a        Cascade         DEATH   time= 682.0 lvl=25 evo= 212.8 taken=   116 kills= 8568 | crit1 damage10 velocity1 cooldown4 | bosses=boss_hex
+REAL chain_arc:b-c-a        Cascade         DEATH   time= 759.2 lvl=40 evo= 196.5 taken=   191 kills=12761 | cooldown10 damage10 velocity10 crit1 | bosses=boss_hex
+REAL chain_arc:b-c-a        Cascade         DEATH   time= 766.0 lvl=39 evo= 158.6 taken=   131 kills=11834 | damage10 cooldown10 velocity10 | bosses=boss_hex
+REAL chain_arc:b-c-a        Cascade         DEATH   time= 769.8 lvl=43 evo= 194.7 taken=   108 kills=13105 | damage10 cooldown10 crit5 velocity10 | bosses=boss_hex
+REAL chain_arc:b-c-a        Cascade         DEATH   time= 780.5 lvl=36 evo= 137.6 taken=   129 kills=13542 | damage10 cooldown10 crit1 velocity8 | bosses=boss_hex
+REAL chain_arc:b-c-a        Cascade         DEATH   time= 904.1 lvl=40 evo= 218.2 taken=   232 kills=16594 | cooldown10 damage10 crit3 velocity8 | bosses=boss_hex,boss_void
+REAL chain_arc:b-c-b        Chain Arc       DEATH   time= 253.5 lvl=10 evo=  -1.0 taken=    98 kills=  723 | area2 damage3 | bosses=
+REAL chain_arc:b-c-b        Detonation      DEATH   time= 430.7 lvl=18 evo= 284.1 taken=    92 kills= 3507 | damage7 area1 | bosses=boss_hex
+REAL chain_arc:b-c-b        Detonation      DEATH   time= 457.8 lvl=16 evo= 208.1 taken=    98 kills= 3185 | damage4 cooldown2 | bosses=boss_hex
+REAL chain_arc:b-c-b        Detonation      DEATH   time= 548.1 lvl=22 evo= 196.5 taken=   102 kills= 4986 | cooldown3 damage10 | bosses=boss_hex
+REAL chain_arc:b-c-b        Detonation      DEATH   time= 605.1 lvl=20 evo= 282.5 taken=   221 kills= 4616 | damage7 hull2 | bosses=boss_hex
+REAL chain_arc:b-c-b        Detonation      DEATH   time= 612.4 lvl=21 evo= 158.6 taken=   123 kills= 5604 | damage10 area2 | bosses=boss_hex
+REAL chain_arc:b-c-b        Detonation      DEATH   time= 627.4 lvl=27 evo= 131.6 taken=   136 kills= 7723 | cooldown1 area9 damage7 | bosses=boss_hex
+REAL chain_arc:b-c-b        Detonation      DEATH   time= 638.1 lvl=29 evo= 250.1 taken=   140 kills= 6632 | damage10 area5 cooldown3 | bosses=boss_hex
+REAL chain_arc:b-c-b        Detonation      DEATH   time= 753.7 lvl=31 evo= 210.9 taken=   148 kills=10285 | damage10 hull1 area8 cooldown1 | bosses=boss_hex
+REAL chain_arc:b-c-b        Detonation      DEATH   time= 905.3 lvl=35 evo= 241.2 taken=   298 kills=10604 | cooldown7 damage10 area8 | bosses=boss_hex,boss_void
+REAL chain_arc:c-c-c        Chain Arc       DEATH   time= 740.2 lvl=14 evo=  -1.0 taken=   723 kills= 1174 | cooldown2 hull5 damage1 | bosses=boss_hex
+REAL chain_arc:c-c-c        Static Field    DEATH   time= 634.7 lvl=20 evo= 128.2 taken=   228 kills= 4524 | damage9 hull1 | bosses=boss_hex
+REAL chain_arc:c-c-c        Static Field    DEATH   time= 665.3 lvl=21 evo= 218.3 taken=   361 kills= 4975 | damage10 hull2 | bosses=boss_hex
+REAL chain_arc:c-c-c        Static Field    DEATH   time= 690.1 lvl=22 evo= 275.4 taken=   240 kills= 4361 | area3 damage8 hull1 | bosses=boss_hex
+REAL chain_arc:c-c-c        Static Field    DEATH   time= 696.0 lvl=23 evo= 208.4 taken=   460 kills= 4766 | hull4 damage8 cooldown1 | bosses=boss_hex
+REAL chain_arc:c-c-c        Static Field    DEATH   time= 756.4 lvl=22 evo= 142.5 taken=   479 kills= 5492 | hull3 damage10 | bosses=boss_hex
+REAL chain_arc:c-c-c        Static Field    DEATH   time= 776.7 lvl=22 evo= 313.9 taken=   410 kills= 3963 | damage8 hull3 area1 | bosses=boss_hex
+REAL chain_arc:c-c-c        Static Field    DEATH   time= 922.5 lvl=31 evo= 174.8 taken=  1083 kills= 6838 | hull10 damage10 area1 | bosses=boss_hex,boss_void
+REAL chain_arc:c-c-c        Static Field    DEATH   time= 950.2 lvl=33 evo= 203.5 taken=  1019 kills= 7397 | damage10 area1 hull10 cooldown3 | bosses=boss_hex,boss_void
+REAL chain_arc:c-c-c        Static Field    TIMEOUT time=1200.0 lvl=32 evo= 227.9 taken=  1415 kills= 9101 | cooldown4 hull10 damage10 | bosses=boss_hex,boss_final
+REAL orbitals:a-a-a         Saturn          WIN     time=1006.3 lvl=31 evo= 234.3 taken=    23 kills=16220 | damage10 hull3 cooldown10 area2 | bosses=boss_hex,boss_final
+REAL orbitals:a-a-a         Saturn          WIN     time= 968.8 lvl=50 evo= 238.7 taken=    40 kills=25643 | cooldown10 damage10 area10 hull10 | bosses=boss_hex,boss_void
+REAL orbitals:a-a-a         Saturn          WIN     time= 974.2 lvl=44 evo= 320.0 taken=    31 kills=22511 | area10 cooldown10 damage10 hull7 | bosses=boss_hex,boss_final
+REAL orbitals:a-a-a         Saturn          WIN     time= 974.6 lvl=43 evo= 207.4 taken=   108 kills=23558 | cooldown10 damage10 hull6 area10 | bosses=boss_hex,boss_final
+REAL orbitals:a-a-a         Saturn          WIN     time= 975.8 lvl=49 evo= 157.3 taken=    51 kills=23061 | damage10 area10 cooldown10 hull10 | bosses=boss_hex,boss_final
+REAL orbitals:a-a-a         Saturn          WIN     time= 975.9 lvl=51 evo= 167.8 taken=    11 kills=24840 | damage10 area10 cooldown10 hull10 | bosses=boss_hex,boss_final
+REAL orbitals:a-a-a         Saturn          WIN     time= 976.7 lvl=52 evo= 199.8 taken=    24 kills=24108 | area10 damage10 cooldown10 hull10 | bosses=boss_hex,boss_void
+REAL orbitals:a-a-a         Saturn          WIN     time= 977.0 lvl=52 evo= 154.9 taken=    44 kills=24869 | damage10 hull10 area10 cooldown10 | bosses=boss_hex,boss_final
+REAL orbitals:a-a-a         Saturn          WIN     time= 978.0 lvl=49 evo= 182.7 taken=    37 kills=26209 | cooldown10 damage10 hull10 area10 | bosses=boss_hex,boss_final
+REAL orbitals:a-a-a         Saturn          WIN     time= 981.6 lvl=34 evo= 227.7 taken=    27 kills=18125 | cooldown10 damage10 hull2 area5 | bosses=boss_hex,boss_final
+REAL orbitals:b-b-b         Aegis           WIN     time=1001.8 lvl=47 evo= 244.5 taken=   132 kills=18530 | area10 damage10 hull10 cooldown10 | bosses=boss_hex,boss_final
+REAL orbitals:b-b-b         Aegis           WIN     time=1002.4 lvl=37 evo= 401.3 taken=   221 kills=13058 | damage10 cooldown10 hull2 area10 | bosses=boss_hex,boss_final
+REAL orbitals:b-b-b         Aegis           WIN     time=1002.5 lvl=47 evo= 194.1 taken=   109 kills=17460 | damage10 area10 hull10 cooldown10 | bosses=boss_hex,boss_final
+REAL orbitals:b-b-b         Aegis           WIN     time= 956.8 lvl=42 evo= 225.2 taken=    60 kills=15124 | damage10 hull6 cooldown10 area10 | bosses=boss_hex,boss_void
+REAL orbitals:b-b-b         Aegis           WIN     time= 960.2 lvl=41 evo= 203.0 taken=    79 kills=16698 | damage10 hull7 cooldown10 area10 | bosses=boss_hex,boss_void
+REAL orbitals:b-b-b         Aegis           WIN     time= 987.0 lvl=47 evo= 174.2 taken=     0 kills=17904 | area10 damage10 hull10 cooldown10 | bosses=boss_hex,boss_void
+REAL orbitals:b-b-b         Aegis           WIN     time= 988.9 lvl=39 evo= 148.6 taken=    56 kills=16480 | hull3 damage10 cooldown8 area10 | bosses=boss_hex,boss_void
+REAL orbitals:b-b-b         Aegis           WIN     time= 990.0 lvl=46 evo= 121.2 taken=     0 kills=17322 | area10 damage10 cooldown10 hull8 | bosses=boss_hex,boss_final
+REAL orbitals:b-b-b         Aegis           WIN     time= 997.7 lvl=46 evo= 161.8 taken=    51 kills=16770 | cooldown10 damage10 area10 hull9 | bosses=boss_hex,boss_final
+REAL orbitals:b-b-b         Aegis           WIN     time= 997.8 lvl=43 evo= 322.8 taken=   142 kills=17674 | area10 cooldown10 damage10 hull8 | bosses=boss_hex,boss_final
+REAL orbitals:c-c-c         Event Horizon   DEATH   time= 433.0 lvl=18 evo= 235.4 taken=   143 kills= 4573 | damage3 cooldown5 | bosses=boss_hex
+REAL orbitals:c-c-c         Event Horizon   DEATH   time= 443.6 lvl=19 evo= 294.6 taken=   170 kills= 4566 | cooldown5 damage3 | bosses=boss_hex
+REAL orbitals:c-c-c         Event Horizon   DEATH   time= 504.4 lvl=20 evo= 136.0 taken=   132 kills= 6290 | cooldown10 damage1 | bosses=boss_hex
+REAL orbitals:c-c-c         Event Horizon   DEATH   time= 521.3 lvl=21 evo= 237.7 taken=   192 kills= 6791 | cooldown8 damage3 | bosses=boss_hex
+REAL orbitals:c-c-c         Event Horizon   DEATH   time= 523.1 lvl=18 evo= 429.2 taken=   244 kills= 4564 | hull2 damage2 cooldown3 | bosses=boss_hex
+REAL orbitals:c-c-c         Event Horizon   DEATH   time= 524.5 lvl=17 evo= 435.1 taken=   229 kills= 5198 | hull2 damage4 cooldown1 | bosses=boss_hex
+REAL orbitals:c-c-c         Event Horizon   DEATH   time= 554.3 lvl=20 evo= 211.4 taken=   279 kills= 7401 | cooldown8 hull1 | bosses=boss_hex
+REAL orbitals:c-c-c         Event Horizon   DEATH   time= 555.2 lvl=21 evo= 183.7 taken=   252 kills= 7663 | hull2 cooldown9 | bosses=boss_hex
+REAL orbitals:c-c-c         Event Horizon   DEATH   time= 574.8 lvl=21 evo= 186.5 taken=   193 kills= 8274 | damage6 cooldown4 hull1 | bosses=boss_hex
+REAL orbitals:c-c-c         Event Horizon   WIN     time=1142.5 lvl=51 evo= 191.3 taken=   700 kills=24176 | damage10 cooldown10 hull10 velocity10 | bosses=boss_hex,boss_final
+REAL pulse_ring:a-a-a       Double Pulse    DEATH   time= 414.5 lvl=22 evo= 194.6 taken=   111 kills= 3911 | area2 damage4 cooldown7 | bosses=boss_hex
+REAL pulse_ring:a-a-a       Double Pulse    DEATH   time= 548.5 lvl=23 evo= 481.5 taken=   208 kills= 2992 | hull1 cooldown8 area1 damage3 | bosses=boss_hex
+REAL pulse_ring:a-a-a       Double Pulse    DEATH   time= 583.1 lvl=18 evo= 489.7 taken=   224 kills= 2648 | cooldown5 area2 hull1 | bosses=boss_hex
+REAL pulse_ring:a-a-a       Double Pulse    DEATH   time= 629.7 lvl=21 evo= 193.7 taken=   195 kills= 4247 | damage5 cooldown7 | bosses=boss_hex
+REAL pulse_ring:a-a-a       Double Pulse    DEATH   time= 637.6 lvl=23 evo= 118.1 taken=   239 kills= 4157 | damage3 cooldown9 hull1 | bosses=boss_hex
+REAL pulse_ring:a-a-a       Double Pulse    DEATH   time= 647.9 lvl=30 evo= 141.4 taken=   217 kills= 5635 | damage8 cooldown8 hull2 | bosses=boss_hex
+REAL pulse_ring:a-a-a       Double Pulse    DEATH   time= 674.5 lvl=30 evo= 207.7 taken=   353 kills= 5970 | area6 hull2 cooldown10 damage2 | bosses=boss_hex
+REAL pulse_ring:a-a-a       Double Pulse    DEATH   time= 683.5 lvl=26 evo= 248.0 taken=   450 kills= 4256 | hull4 cooldown9 area2 damage1 | bosses=boss_hex
+REAL pulse_ring:a-a-a       Pulse Ring      DEATH   time= 204.5 lvl=11 evo=  -1.0 taken=   106 kills=  734 | damage1 cooldown3 | bosses=
+REAL pulse_ring:a-a-a       Pulse Ring      DEATH   time= 304.1 lvl=17 evo=  -1.0 taken=   152 kills= 1754 | area3 cooldown4 | bosses=boss_hex
+REAL pulse_ring:b-b-b       Repulsor        DEATH   time= 441.0 lvl=24 evo= 213.7 taken=   199 kills= 4521 | cooldown10 hull1 area3 | bosses=boss_hex
+REAL pulse_ring:b-b-b       Repulsor        DEATH   time= 459.9 lvl=20 evo= 120.5 taken=   163 kills= 4395 | cooldown7 damage3 area1 | bosses=boss_hex
+REAL pulse_ring:b-b-b       Repulsor        DEATH   time= 503.3 lvl=25 evo= 156.1 taken=   102 kills= 4936 | area6 cooldown8 | bosses=boss_hex
+REAL pulse_ring:b-b-b       Repulsor        DEATH   time= 543.8 lvl=23 evo= 255.7 taken=   173 kills= 5599 | cooldown10 area2 | bosses=boss_hex
+REAL pulse_ring:b-b-b       Repulsor        DEATH   time= 572.7 lvl=26 evo= 317.5 taken=   216 kills= 6727 | cooldown10 area4 damage1 hull1 | bosses=boss_hex
+REAL pulse_ring:b-b-b       Repulsor        DEATH   time= 577.6 lvl=26 evo= 162.0 taken=   196 kills= 6983 | cooldown10 area5 | bosses=boss_hex
+REAL pulse_ring:b-b-b       Repulsor        DEATH   time= 582.3 lvl=19 evo= 253.6 taken=   141 kills= 4312 | damage1 cooldown8 | bosses=boss_hex
+REAL pulse_ring:b-b-b       Repulsor        DEATH   time= 603.8 lvl=20 evo= 353.1 taken=   133 kills= 3888 | area2 cooldown7 | bosses=boss_hex
+REAL pulse_ring:b-b-b       Repulsor        DEATH   time= 613.1 lvl=28 evo= 170.9 taken=   245 kills= 8207 | cooldown10 area8 hull1 | bosses=boss_hex
+REAL pulse_ring:b-b-b       Repulsor        DEATH   time= 625.1 lvl=26 evo= 159.6 taken=   204 kills= 8083 | damage4 cooldown10 area3 | bosses=boss_hex
+REAL pulse_ring:c-c-c       Pulse Ring      DEATH   time= 247.1 lvl=12 evo=  -1.0 taken=   106 kills=  806 | cooldown4 crit1 | bosses=
+REAL pulse_ring:c-c-c       Pulse Ring      DEATH   time= 249.0 lvl=12 evo=  -1.0 taken=   116 kills=  705 | cooldown5 | bosses=
+REAL pulse_ring:c-c-c       Pulse Ring      DEATH   time= 284.9 lvl=16 evo=  -1.0 taken=   144 kills= 1227 | damage2 cooldown5 | bosses=
+REAL pulse_ring:c-c-c       Tide            DEATH   time= 905.5 lvl=36 evo= 113.9 taken=   112 kills= 9297 | cooldown10 crit1 velocity6 damage10 | bosses=boss_hex,boss_void
+REAL pulse_ring:c-c-c       Tide            DEATH   time= 915.1 lvl=37 evo= 225.9 taken=   191 kills= 9273 | damage10 cooldown10 velocity7 crit1 | bosses=boss_hex,boss_void
+REAL pulse_ring:c-c-c       Tide            WIN     time=1045.5 lvl=35 evo= 180.6 taken=   158 kills=11806 | velocity5 cooldown10 crit1 damage10 | bosses=boss_hex,boss_void
+REAL pulse_ring:c-c-c       Tide            WIN     time=1062.8 lvl=34 evo= 112.8 taken=    99 kills=11368 | damage10 cooldown10 crit1 velocity5 | bosses=boss_hex,boss_final
+REAL pulse_ring:c-c-c       Tide            WIN     time=1070.5 lvl=34 evo= 187.2 taken=    78 kills=10407 | velocity5 damage10 cooldown10 crit1 | bosses=boss_hex,boss_final
+REAL pulse_ring:c-c-c       Tide            WIN     time=1084.2 lvl=35 evo= 118.5 taken=   131 kills=11422 | cooldown10 damage10 velocity9 | bosses=boss_hex,boss_final
+REAL pulse_ring:c-c-c       Tide            WIN     time=1096.5 lvl=39 evo= 181.7 taken=   138 kills=11898 | cooldown10 damage10 velocity10 crit1 | bosses=boss_hex,boss_final
+REAL vertex_shot:a-a-a      Focus Fire      DEATH   time= 578.0 lvl=20 evo= 191.0 taken=   140 kills= 5563 | hull2 cooldown5 damage4 | bosses=boss_hex
+REAL vertex_shot:a-a-a      Focus Fire      DEATH   time= 812.3 lvl=31 evo= 152.5 taken=   168 kills=14268 | area1 damage10 cooldown9 hull1 | bosses=boss_hex
+REAL vertex_shot:a-a-a      Focus Fire      WIN     time=1000.8 lvl=47 evo= 181.1 taken=   176 kills=19765 | damage10 cooldown10 hull10 area8 | bosses=boss_hex,boss_final
+REAL vertex_shot:a-a-a      Focus Fire      WIN     time=1001.0 lvl=46 evo= 149.1 taken=    56 kills=19662 | damage10 hull10 cooldown10 area10 | bosses=boss_hex,boss_final
+REAL vertex_shot:a-a-a      Focus Fire      WIN     time=1001.6 lvl=43 evo= 149.9 taken=    40 kills=15828 | hull10 cooldown10 damage10 area5 | bosses=boss_hex,boss_void
+REAL vertex_shot:a-a-a      Focus Fire      WIN     time= 982.5 lvl=45 evo= 190.0 taken=   174 kills=19568 | damage10 cooldown10 area10 hull10 | bosses=boss_hex,boss_void
+REAL vertex_shot:a-a-a      Focus Fire      WIN     time= 983.0 lvl=49 evo= 181.9 taken=   182 kills=19731 | damage10 cooldown10 hull10 area10 | bosses=boss_hex,boss_void
+REAL vertex_shot:a-a-a      Focus Fire      WIN     time= 994.7 lvl=33 evo= 130.2 taken=   252 kills=16430 | hull4 cooldown10 damage10 area1 | bosses=boss_hex,boss_void
+REAL vertex_shot:a-a-a      Focus Fire      WIN     time= 996.5 lvl=49 evo= 274.8 taken=   173 kills=19647 | hull10 damage10 cooldown10 area10 | bosses=boss_hex,boss_void
+REAL vertex_shot:a-a-a      Focus Fire      WIN     time= 997.4 lvl=45 evo= 195.7 taken=   155 kills=18516 | cooldown10 damage10 hull10 area7 | bosses=boss_hex,boss_final
+REAL vertex_shot:a-b-b      Star Burst      DEATH   time= 921.4 lvl=40 evo= 197.1 taken=   399 kills=12147 | crit7 hull2 damage10 cooldown10 | bosses=boss_hex,boss_void
+REAL vertex_shot:a-b-b      Star Burst      WIN     time= 931.1 lvl=49 evo= 198.8 taken=    28 kills=20868 | cooldown10 damage10 crit10 hull10 | bosses=boss_hex,boss_void
+REAL vertex_shot:a-b-b      Star Burst      WIN     time= 939.4 lvl=45 evo= 213.6 taken=    74 kills=20553 | damage10 cooldown10 crit10 hull9 | bosses=boss_hex,boss_void
+REAL vertex_shot:a-b-b      Star Burst      WIN     time= 946.7 lvl=43 evo= 193.9 taken=    15 kills=20584 | cooldown10 hull9 crit10 damage10 | bosses=boss_hex,boss_void
+REAL vertex_shot:a-b-b      Star Burst      WIN     time= 953.8 lvl=38 evo= 216.5 taken=    96 kills=20579 | crit10 cooldown10 damage10 hull1 | bosses=boss_hex,boss_void
+REAL vertex_shot:a-b-b      Star Burst      WIN     time= 956.5 lvl=48 evo= 150.3 taken=   111 kills=20895 | hull10 cooldown10 damage10 crit10 | bosses=boss_hex,boss_final
+REAL vertex_shot:a-b-b      Star Burst      WIN     time= 957.1 lvl=49 evo= 123.2 taken=   142 kills=21128 | damage10 crit10 cooldown10 hull10 | bosses=boss_hex,boss_final
+REAL vertex_shot:a-b-b      Star Burst      WIN     time= 960.4 lvl=41 evo= 238.2 taken=   185 kills=20375 | cooldown10 damage10 hull5 crit10 | bosses=boss_hex,boss_void
+REAL vertex_shot:a-b-b      Star Burst      WIN     time= 964.4 lvl=47 evo= 200.6 taken=   105 kills=20454 | damage10 cooldown10 hull10 crit10 | bosses=boss_hex,boss_final
+REAL vertex_shot:a-b-b      Star Burst      WIN     time= 971.7 lvl=49 evo= 149.0 taken=   151 kills=20818 | damage10 cooldown10 crit10 hull10 | bosses=boss_hex,boss_final
+REAL vertex_shot:c-c-c      Deadeye         DEATH   time= 671.5 lvl=27 evo= 144.7 taken=   157 kills= 8293 | damage10 hull2 cooldown3 crit3 | bosses=boss_hex
+REAL vertex_shot:c-c-c      Deadeye         DEATH   time= 686.0 lvl=33 evo= 163.9 taken=   204 kills= 8157 | damage10 crit10 | bosses=boss_hex
+REAL vertex_shot:c-c-c      Deadeye         DEATH   time= 706.0 lvl=34 evo= 249.4 taken=   140 kills= 9250 | damage10 cooldown5 crit9 | bosses=boss_hex
+REAL vertex_shot:c-c-c      Deadeye         DEATH   time= 837.7 lvl=36 evo= 171.3 taken=   354 kills=15111 | crit10 damage10 hull3 cooldown3 | bosses=boss_hex
+REAL vertex_shot:c-c-c      Deadeye         WIN     time= 960.7 lvl=51 evo= 178.8 taken=   255 kills=22184 | crit10 damage10 hull10 cooldown10 | bosses=boss_hex,boss_void
+REAL vertex_shot:c-c-c      Deadeye         WIN     time= 965.2 lvl=51 evo= 140.8 taken=   197 kills=22672 | crit10 damage10 cooldown10 hull10 | bosses=boss_hex,boss_void
+REAL vertex_shot:c-c-c      Deadeye         WIN     time= 982.6 lvl=51 evo= 139.5 taken=    94 kills=23234 | damage10 cooldown10 crit10 hull10 | bosses=boss_hex,boss_final
+REAL vertex_shot:c-c-c      Deadeye         WIN     time= 992.9 lvl=49 evo= 115.7 taken=   110 kills=22585 | cooldown10 crit10 damage10 hull10 | bosses=boss_hex,boss_final
+REAL vertex_shot:c-c-c      Vertex Shot     DEATH   time= 264.3 lvl=12 evo=  -1.0 taken=    87 kills= 1442 | damage2 crit1 | bosses=
+REAL vertex_shot:c-c-c      Vertex Shot     DEATH   time= 458.1 lvl=13 evo=  -1.0 taken=    85 kills= 2395 | damage5 | bosses=boss_hex

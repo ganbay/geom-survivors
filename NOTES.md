@@ -354,6 +354,8 @@ What it shows:
 - **Chain Arc still never wins.** It survives longer (Detonation and Cascade gained 2–2.5 minutes from 0:00) but dies at or before the final boss.
 - **Vertex Shot barely moved**, as expected: Focus Fire's dip from 70% to 50% is within seed noise for 10 runs.
 
+Raw per-run output for the third, fourth and sixth passes is in `tests/results/2026-10-09/`.
+
 ## Current characters, weapons and upgrades (as of 2026-10-09)
 
 A snapshot of how everything works right now. The numbers live in `src/data/balance.gd`; the behavior lives in `src/weapons/*.gd`, `src/core/build.gd` (`recompute`, `roll_hit`) and `src/core/game.gd` (kill and hit effects). Update this section whenever balance changes.

@@ -1,0 +1,32 @@
+mob EVO chain_arc:-              Chain Arc       dps=    345 kills=  988 kps=  16.5
+single EVO chain_arc:-              Chain Arc       dps=     50 kills=    0 kps=   0.0
+mob EVO chain_arc:a-a-a          Cascade         dps=    540 kills= 1102 kps=  18.4
+single EVO chain_arc:a-a-a          Cascade         dps=     50 kills=    0 kps=   0.0
+mob EVO chain_arc:b-b-b          Detonation      dps=    760 kills= 1075 kps=  17.9
+single EVO chain_arc:b-b-b          Detonation      dps=     81 kills=    0 kps=   0.0
+mob EVO chain_arc:c-c-c          Static Field    dps=    466 kills= 1062 kps=  17.7
+single EVO chain_arc:c-c-c          Static Field    dps=     50 kills=    0 kps=   0.0
+mob EVO orbitals:-               Rods            dps=    332 kills=  904 kps=  15.1
+single EVO orbitals:-               Rods            dps=     51 kills=    0 kps=   0.0
+mob EVO orbitals:a-a-a           Saturn          dps=    474 kills= 1254 kps=  20.9
+single EVO orbitals:a-a-a           Saturn          dps=     66 kills=    0 kps=   0.0
+mob EVO orbitals:b-b-b           Aegis           dps=    775 kills=  884 kps=  14.7
+single EVO orbitals:b-b-b           Aegis           dps=    149 kills=    0 kps=   0.0
+mob EVO orbitals:c-c-c           Event Horizon   dps=    597 kills= 1432 kps=  23.9
+single EVO orbitals:c-c-c           Event Horizon   dps=     84 kills=    0 kps=   0.0
+mob EVO pulse_ring:-             Pulse Ring      dps=    602 kills= 1066 kps=  17.8
+single EVO pulse_ring:-             Pulse Ring      dps=     13 kills=    0 kps=   0.0
+mob EVO pulse_ring:a-a-a         Double Pulse    dps=    692 kills= 1226 kps=  20.4
+single EVO pulse_ring:a-a-a         Double Pulse    dps=     23 kills=    0 kps=   0.0
+mob EVO pulse_ring:b-b-b         Repulsor        dps=    741 kills= 1316 kps=  21.9
+single EVO pulse_ring:b-b-b         Repulsor        dps=     19 kills=    0 kps=   0.0
+mob EVO pulse_ring:c-c-c         Tide            dps=    850 kills= 1258 kps=  21.0
+single EVO pulse_ring:c-c-c         Tide            dps=     38 kills=    0 kps=   0.0
+mob EVO vertex_shot:-            Vertex Shot     dps=    365 kills=  881 kps=  14.7
+single EVO vertex_shot:-            Vertex Shot     dps=    103 kills=    0 kps=   0.0
+mob EVO vertex_shot:a-a-a        Focus Fire      dps=    622 kills= 1438 kps=  24.0
+single EVO vertex_shot:a-a-a        Focus Fire      dps=    103 kills=    0 kps=   0.0
+mob EVO vertex_shot:b-b-b        Star Burst      dps=   1218 kills= 1414 kps=  23.6
+single EVO vertex_shot:b-b-b        Star Burst      dps=    440 kills=    0 kps=   0.0
+mob EVO vertex_shot:c-c-c        Deadeye         dps=    844 kills= 1093 kps=  18.2
+single EVO vertex_shot:c-c-c        Deadeye         dps=    241 kills=    0 kps=   0.0
