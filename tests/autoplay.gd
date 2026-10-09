@@ -50,7 +50,7 @@ const MILESTONES := [4, 7, 10]  # weapon levels the evo path picks for
 const BUILDS := {
 	"focus":    {"evo": "vertex_shot:a-a-a", "passives": ["damage", "cooldown", "hull", "area"], "options": ["Payload", "Warhead"]},
 	"burst":    {"evo": "vertex_shot:a-b-b", "passives": ["damage", "cooldown", "crit", "hull"], "options": ["Payload", "Warhead"]},
-	"deadeye":  {"evo": "vertex_shot:c-c-c", "passives": ["crit", "damage", "cooldown", "hull"], "options": ["Sharp Eye", "Marksman"]},
+	"deadeye":  {"evo": "vertex_shot:c-c-c", "passives": ["damage", "crit", "cooldown", "hull"], "options": ["Sharp Eye", "Marksman"]},
 	"saturn":   {"evo": "orbitals:a-a-a", "passives": ["damage", "cooldown", "area", "hull"], "options": ["Payload", "Warhead", "Impact"]},
 	"aegis":    {"evo": "orbitals:b-b-b", "passives": ["damage", "area", "cooldown", "hull"], "options": ["Payload", "Warhead", "Plating"]},
 	"horizon":  {"evo": "orbitals:c-c-c", "passives": ["cooldown", "damage", "hull", "velocity"], "options": ["Payload", "Warhead", "Reactive Plating"]},
@@ -58,8 +58,8 @@ const BUILDS := {
 	"repulsor": {"evo": "pulse_ring:b-b-b", "passives": ["cooldown", "area", "damage", "hull"], "options": ["Payload", "Warhead", "Double Tap"]},
 	"tide":     {"evo": "pulse_ring:c-c-c", "passives": ["cooldown", "damage", "velocity", "crit"], "options": ["Payload", "Warhead"]},
 	"cascade":  {"evo": "chain_arc:b-c-a", "passives": ["damage", "cooldown", "velocity", "crit"], "options": ["Payload", "Warhead"]},
-	"detonate": {"evo": "chain_arc:b-c-b", "passives": ["area", "damage", "cooldown", "crit"], "options": ["Payload", "Warhead"]},
-	"field":    {"evo": "chain_arc:c-c-c", "passives": ["damage", "hull", "cooldown", "velocity"], "options": ["Payload", "Warhead"]},
+	"detonate": {"evo": "chain_arc:b-c-b", "passives": ["damage", "area", "cooldown", "hull"], "options": ["Payload", "Warhead"]},
+	"field":    {"evo": "chain_arc:c-c-c", "passives": ["damage", "hull", "cooldown", "area"], "options": ["Payload", "Warhead"]},
 }
 const CLEAR_BOSSES := ["boss_tetra", "boss_penta"]
 const DUMMY_TYPE := "brute"  # no AI or summons; resized to boss scale for bench=single

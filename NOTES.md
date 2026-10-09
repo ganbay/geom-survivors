@@ -312,6 +312,48 @@ The balance tables above predate these changes.
 - **Rods** base length 120px (was 90; briefly 117).
 - **Test bot:** it now quits if the game scene fails to load. Before, a script error made it log an error every frame forever (this filled 17 GB of logs in ten minutes).
 
+## 2026-10-09 (sixth pass): tree tweaks and a re-test
+
+**Changes**
+- Pulse Ring base cooldown 2.0s (was 2.2).
+- Rods level 4: Extra Rods is +2 rods with no weapon damage penalty (was +1 rod, −3 WD); Long Reach is +30% length, +30% width (was +25%, +20%).
+- Chain Arc level 4: Fork is +1 spark with no penalty (was −3 WD); Live Wire is +10% crit, +30% crit damage (was +20%).
+- Rods base length 120px. Crit damage numbers no longer end in "!".
+- Bot builds: Deadeye and Detonation now take Damage first, Static Field takes Area instead of Velocity (the fourth pass showed the old orders were worse than generic).
+
+**Re-test** (`build=<form>`, 10 seeds per cell; "before" is the fourth pass, which predates the fifth-pass base buffs too)
+
+| Form | Won from 6:00 (before → now) | Won from 0:00 (before → now) | Median survival from 0:00 (before → now) |
+|---|---|---|---|
+| Focus Fire | 70% → 50% | 90% → 80% | 16:28 → 16:35 |
+| Star Burst | 80% → 100% | 90% → 90% | 15:56 → 15:55 |
+| Deadeye | 0% → 20% | 10% → 40% | 10:11 → 12:51 |
+| Saturn | 20% → 100% | 0% → 100% | 11:44 → 16:16 |
+| Aegis | 0% → 100% | 10% → 100% | 10:34 → 16:33 |
+| Event Horizon | 0% → 20% | 0% → 10% | 9:32 → 8:43 |
+| Double Pulse | 0% → 0% | 0% → 0% | 9:29 → 10:06 |
+| Repulsor | 0% → 0% | 0% → 0% | 8:13 → 9:35 |
+| Tide | 10% → 50% | 30% → 50% | 12:10 → 16:20 |
+| Cascade | 10% → 0% | 0% → 0% | 10:07 → 12:00 |
+| Detonation | 10% → 0% | 10% → 0% | 7:33 → 10:08 |
+| Static Field | 0% → 0% | 0% → 0% | 11:15 → 12:28 |
+
+Weapon alone, no passives (`bench=single` / `bench=mob`, 60s at 8:00):
+
+| Build | Single-target DPS | Horde kills/s |
+|---|---|---|
+| Vertex Shot 9 / Focus Fire / Star Burst / Deadeye | 104 / 104 / 436 / 242 | 14.9 / 24.2 / 23.5 / 18.2 |
+| Rods 9 / Saturn / Aegis / Event Horizon | 93 / 108 / 173 / 84 | 18.9 / 23.8 / 15.5 / 27.4 |
+| Pulse Ring 9 / Double Pulse / Repulsor / Tide | 16 / 28 / 22 / 50 | 19.4 / 20.6 / 21.1 / 21.3 |
+| Chain Arc 9 / Cascade / Detonation / Static Field | 63 / 63 / 80 / 50 | 16.5 / 20.9 / 20.3 / 17.7 |
+
+What it shows:
+- **Rods overshot.** Saturn and Aegis went from almost never winning to 100% in both tests (20 of 20 each). The 120px rods are the likely cause: Aegis has neither level-4 change and jumped just as much.
+- **Event Horizon is still the odd one out** at 10–20%. It drags enemies onto the player.
+- **Tide is now a real build** (50%); the other two Pulse Ring forms still never win. Their single-target DPS is 22–28.
+- **Chain Arc still never wins.** It survives longer (Detonation and Cascade gained 2–2.5 minutes from 0:00) but dies at or before the final boss.
+- **Vertex Shot barely moved**, as expected: Focus Fire's dip from 70% to 50% is within seed noise for 10 runs.
+
 ## Current characters, weapons and upgrades (as of 2026-10-09)
 
 A snapshot of how everything works right now. The numbers live in `src/data/balance.gd`; the behavior lives in `src/weapons/*.gd`, `src/core/build.gd` (`recompute`, `roll_hit`) and `src/core/game.gd` (kill and hit effects). Update this section whenever balance changes.
@@ -365,7 +407,7 @@ Levels 4, 7 and 10 are pick-one. "WD" is weapon damage.
 **Rods** (Square; id `orbitals`)
 - Base: 11 damage, 2 rods, 120px long, 7px half-width, spin 2.6 rad/s. Rods are evenly spaced and each hits everything along it once per pass.
 - 2: +1 rod · 3: +20% length, +4 WD
-- **4:** Extra Rod (+1 rod, −3 WD) / Flywheel (+25% spin, +5 WD) / Long Reach (+25% length, +20% width)
+- **4:** Extra Rods (+2 rods) / Flywheel (+25% spin, +5 WD) / Long Reach (+30% length, +30% width)
 - 5: +10% spin · 6: +1 rod, +10% length
 - **7:** Buzzsaw (+30% spin) / Heavy Rods (+7 WD, +30% damage, +30% width) / Battering Ram (+80 knockback, +20% length, +10 bonus)
 - 8: +20% spin, +15% length · 9: +10% spin
@@ -375,7 +417,7 @@ Levels 4, 7 and 10 are pick-one. "WD" is weapon damage.
   - **Event Horizon:** +25% length. Non-boss enemies within 1.8× reach are dragged in to 0.6× reach.
 
 **Pulse Ring** (Circle)
-- Base: 10 damage, 2.2s cooldown, 1 ring, 170px, full size in 0.42s. A ring hits each enemy once.
+- Base: 10 damage, 2.0s cooldown, 1 ring, 170px, full size in 0.42s. A ring hits each enemy once.
 - 2: +5 WD · 3: +20% size
 - **4:** Quick Pulse (−15% cooldown) / Wide Band (+25% size, +20% ring speed) / Hard Pulse (+10% crit, +30% crit damage)
 - 5: −10% cooldown · 6: +20% ring speed, +5 WD
@@ -389,7 +431,7 @@ Levels 4, 7 and 10 are pick-one. "WD" is weapon damage.
 **Chain Arc** (Spark)
 - Base: 9 damage, 1.3s cooldown, 1 spark, 2 jumps. A spark starts at a nearest enemy within 420px × area, then jumps to the nearest enemy within 150px × speed other than the one it just hit. No damage loss per jump.
 - 2: +2 jumps · 3: +5 WD, +15% jump range
-- **4:** Fork (+1 spark, −3 WD) / Long Chain (+2 jumps, +5 WD) / Live Wire (+10% crit, +20% crit damage)
+- **4:** Fork (+1 spark) / Long Chain (+2 jumps, +5 WD) / Live Wire (+10% crit, +30% crit damage)
 - 5: −10% cooldown · 6: +1 spark, +1 jump
 - **7:** Overload (−10% cooldown, +1 spark) / Conductor (+7 WD, +30% damage) / Far Reach (+30% jump range, +2 jumps, +10 bonus)
 - 8: +2 jumps, +20% jump range · 9: −10% cooldown
@@ -439,7 +481,7 @@ Levels 4, 7 and 10 are pick-one. "WD" is weapon damage.
 | Overcharge (new) | Every 4th attack deals double | +10% cooldown |
 
 ### Where each build stands
-See the third- and fourth-pass tables (2026-10-09). Untuned.
-- **Strong with the right passives:** Focus Fire (needs the bonus-damage options).
-- **Strong:** Star Burst.
-- **Weak:** Pulse Ring (all forms except Tide), all three Rods forms, Detonation.
+See the sixth-pass table (2026-10-09). Untuned since.
+- **Too strong:** Saturn and Aegis (100%), Star Burst (90–100%).
+- **About right:** Focus Fire, Tide, Deadeye (40–80%).
+- **Too weak:** Double Pulse, Repulsor, all three Chain Arc forms (0%), Event Horizon (10–20%).

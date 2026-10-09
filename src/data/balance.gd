@@ -131,9 +131,9 @@ const WEAPONS := {
 		"levels": [
 			{"count": 1},
 			{"area": 0.20, "wd": 4},
-			[{"name": "Extra Rod", "mods": {"count": 1, "wd": -3}},
+			[{"name": "Extra Rods", "mods": {"count": 2}},
 			 {"name": "Flywheel", "mods": {"speed": 0.25, "wd": 5}},
-			 {"name": "Long Reach", "mods": {"area": 0.25, "width": 0.20}}],
+			 {"name": "Long Reach", "mods": {"area": 0.30, "width": 0.30}}],
 			{"speed": 0.10},
 			{"count": 1, "area": 0.10},
 			[{"name": "Buzzsaw", "mods": {"speed": 0.30}},
@@ -149,7 +149,7 @@ const WEAPONS := {
 	"pulse_ring": {
 		"name": "Pulse Ring",
 		"desc": "Emits an expanding ring that damages everything it crosses.",
-		"base": {"damage": 10.0, "cooldown": 2.2, "count": 1, "speed": 1.0},
+		"base": {"damage": 10.0, "cooldown": 2.0, "count": 1, "speed": 1.0},
 		"levels": [
 			{"wd": 5},
 			{"area": 0.20},
@@ -175,9 +175,9 @@ const WEAPONS := {
 		"levels": [
 			{"bounces": 2},
 			{"wd": 5, "speed": 0.15},
-			[{"name": "Fork", "mods": {"count": 1, "wd": -3}},
+			[{"name": "Fork", "mods": {"count": 1}},
 			 {"name": "Long Chain", "mods": {"bounces": 2, "wd": 5}},
-			 {"name": "Live Wire", "mods": {"crit": 0.10, "crit_dmg": 0.20}}],
+			 {"name": "Live Wire", "mods": {"crit": 0.10, "crit_dmg": 0.30}}],
 			{"cooldown": -0.10},
 			{"count": 1, "bounces": 1},
 			[{"name": "Overload", "mods": {"cooldown": -0.10, "count": 1}},
