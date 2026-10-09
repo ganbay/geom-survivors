@@ -230,6 +230,46 @@ The baseline table above was measured **before** these changes and no longer des
 - Tide: one pass (in or out) takes 0.5 × cooldown × (cooldown ÷ base cooldown) ÷ ring speed, so cooldown reduction counts twice. Each pass hits every enemy once.
 - Static Field: one spark with the full jump count per missed bullet.
 
+## 2026-10-09 (third pass): balance test after the second-pass changes
+
+Nothing was tuned. Setup as in the first baseline: `bench=real start=360`, 10 seeds per row, the same option letter at levels 4, 7 and 10 (path "-" stays at level 9 with the first options).
+
+| Build | Path | Median survival | Past 10:00 | Reached 15:00 | Won |
+|---|---|---|---|---|---|
+| Star Burst (Vertex Shot) | b-b-b | 17:16 | 100% | 80% | 70% |
+| Static Field (Chain Arc) | c-c-c | 15:30 | 100% | 60% | 0% |
+| Focus Fire (Vertex Shot) | a-a-a | 14:56 | 100% | 50% | 0% |
+| Rods, level 9 | - | 14:01 | 70% | 40% | 0% |
+| Vertex Shot, level 9 | - | 13:22 | 100% | 40% | 0% |
+| Cascade (Chain Arc) | a-a-a | 13:09 | 100% | 20% | 0% |
+| Tide (Pulse Ring) | c-c-c | 12:57 | 70% | 30% | 30% |
+| Deadeye (Vertex Shot) | c-c-c | 12:16 | 100% | 10% | 10% |
+| Chain Arc, level 9 | - | 12:06 | 80% | 10% | 0% |
+| Detonation (Chain Arc) | b-b-b | 11:30 | 90% | 10% | 0% |
+| Repulsor (Pulse Ring) | b-b-b | 11:03 | 70% | 0% | 0% |
+| Pulse Ring, level 9 | - | 10:33 | 60% | 0% | 0% |
+| Aegis (Rods) | b-b-b | 10:16 | 60% | 0% | 0% |
+| Saturn (Rods) | a-a-a | 10:15 | 60% | 0% | 0% |
+| Double Pulse (Pulse Ring) | a-a-a | 10:06 | 60% | 0% | 0% |
+| Event Horizon (Rods) | c-c-c | 9:57 | 50% | 0% | 0% |
+
+Weapon alone, no passives, 60s at 8:00 (`bench=single` / `bench=mob`):
+
+| Build | Single-target DPS | Horde kills/s |
+|---|---|---|
+| Vertex Shot 9 / Focus Fire / Star Burst / Deadeye | 103 / 103 / 440 / 241 | 14.7 / 24.0 / 23.6 / 18.2 |
+| Rods 9 / Saturn / Aegis / Event Horizon | 51 / 66 / 149 / 84 | 15.1 / 20.9 / 14.7 / 23.9 |
+| Pulse Ring 9 / Double Pulse / Repulsor / Tide | 13 / 23 / 19 / 38 | 17.8 / 20.4 / 21.9 / 21.0 |
+| Chain Arc 9 / Cascade / Detonation / Static Field | 50 / 50 / 81 / 50 | 16.5 / 18.4 / 17.9 / 17.7 |
+
+What it shows:
+- **Only Star Burst wins reliably.** Its single-target DPS is four times any other build's, and killing bosses is what wins runs.
+- **Pulse Ring went from strongest to weakest.** With base damage 8 its single-target DPS is 13–38. Only Tide wins at all (30%).
+- **Rods are stuck at the 10:00 boss.** With no knockback, about half of the evolved runs die between 10:00 and 11:40.
+- **Static Field survives best after Star Burst** but never kills the final boss: it is a defensive form on a low-damage weapon.
+- **Rods at level 9 outlasting all three Rods forms is unexplained.** Saturn is the same build plus outer rods. It may be seed noise (runs vary by about ±2 minutes) and needs a re-run with more seeds before anyone acts on it.
+- **Almost nothing wins.** 13 of 16 builds have a 0–10% win rate. The first baseline had six forms at 30% or more, so removing knockback and the old Pulse Ring forms made the game much harder for the bot.
+
 ## Current characters, weapons and upgrades (as of 2026-10-09)
 
 A snapshot of how everything works right now. The numbers live in `src/data/balance.gd`; the behavior lives in `src/weapons/*.gd`, `src/core/build.gd` (`recompute`, `roll_hit`) and `src/core/game.gd` (kill and hit effects). Update this section whenever balance changes.
@@ -357,4 +397,6 @@ Levels 4, 7 and 10 are pick-one. "WD" is weapon damage.
 | Overcharge (new) | Every 4th attack deals double | +10% cooldown |
 
 ### Where each build stands
-Not measured since the second pass on 2026-10-09: the baseline table predates the Pulse Ring and Chain Arc reworks. Re-run it before tuning.
+See the third-pass table (2026-10-09). Untuned.
+- **Strong:** Star Burst.
+- **Weak:** Pulse Ring (all forms except Tide), all three Rods forms, Detonation.
