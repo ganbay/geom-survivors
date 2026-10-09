@@ -4,7 +4,7 @@ extends Weapon
 ## Level-10 forms: saturn = Saturn (outer rods spinning the other way) · aegis = Aegis (short rods that eat
 ##                 enemy bullets) · horizon = Event Horizon (rods drag enemies in).
 
-const LENGTH := 117.0
+const LENGTH := 120.0
 const HALF_WIDTH := 7.0
 
 var angle := 0.0

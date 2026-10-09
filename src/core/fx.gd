@@ -87,8 +87,7 @@ func number(px: float, py: float, amount: float, crit: bool) -> void:
 		if not crit:
 			return
 		numbers.pop_front()
-	var text := str(maxi(1, roundi(amount)))
-	numbers.append([px + randf_range(-10.0, 10.0), py + randf_range(-6.0, 6.0), text + "!" if crit else text, crit, NUMBER_LIFE])
+	numbers.append([px + randf_range(-10.0, 10.0), py + randf_range(-6.0, 6.0), str(maxi(1, roundi(amount))), crit, NUMBER_LIFE])
 
 
 func ring(px: float, py: float, radius: float, c: Color, l: float, width := 3.0) -> void:
